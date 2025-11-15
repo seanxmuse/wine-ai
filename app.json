@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "wine-scanner",
+    "name": "Wine Scanner",
     "slug": "wine-scanner",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,20 +10,63 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#fefdfb"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.winescanner.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to scan wine lists",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photos to select wine list images"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#fefdfb"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.winescanner.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "Wine Scanner",
+      "shortName": "Wine Scanner",
+      "description": "Discover the best wines on any restaurant wine list",
+      "themeColor": "#8b3952",
+      "backgroundColor": "#fefdfb",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/",
+      "scope": "/"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Wine Scanner to access your camera to scan wine lists"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Wine Scanner to access your photos"
+        }
+      ]
+    ],
+    "extra": {
+      "supabaseUrl": "https://acsbqayfnrazspwuhyep.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjc2JxYXlmbnJhenNwd3VoeWVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNTQ3NDYsImV4cCI6MjA3ODczMDc0Nn0.jsJ9VdOALl4NgI83knmFwfP9Xe_aMqonqqSMlg9jAXQ"
     }
   }
 }
