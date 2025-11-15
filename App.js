@@ -15,7 +15,7 @@ import {
   CrimsonPro_600SemiBold,
   CrimsonPro_700Bold,
 } from '@expo-google-fonts/crimson-pro';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 // Use real Supabase backend
 import { supabase } from './src/services/supabase';
 import { theme } from './src/theme';
@@ -24,6 +24,8 @@ import { theme } from './src/theme';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { CameraScreen } from './src/screens/CameraScreen';
 import { ResultsScreen } from './src/screens/ResultsScreen';
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Stack = createNativeStackNavigator();
 
@@ -31,6 +33,8 @@ export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
   // Load fonts
   useEffect(() => {
@@ -54,6 +58,22 @@ export default function App() {
     loadFonts();
   }, []);
 
+  // Check onboarding status
+  useEffect(() => {
+    async function checkOnboarding() {
+      try {
+        const completed = await AsyncStorage.getItem('onboarding_completed');
+        setOnboardingCompleted(completed === 'true');
+      } catch (error) {
+        console.error('Error checking onboarding:', error);
+        setOnboardingCompleted(false);
+      } finally {
+        setCheckingOnboarding(false);
+      }
+    }
+    checkOnboarding();
+  }, []);
+
   // Check auth session
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -70,7 +90,12 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (!fontsLoaded || loading) {
+  const handleOnboardingComplete = async () => {
+    await AsyncStorage.setItem('onboarding_completed', 'true');
+    setOnboardingCompleted(true);
+  };
+
+  if (!fontsLoaded || loading || checkingOnboarding) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.colors.gold[500]} />
@@ -78,26 +103,55 @@ export default function App() {
     );
   }
 
+  // Show onboarding if not completed and user is authenticated
+  if (session && !onboardingCompleted) {
+    return (
+      <SafeAreaProvider>
+        <OnboardingScreen onComplete={handleOnboardingComplete} />
+      </SafeAreaProvider>
+    );
+  }
+
+  const AppContent = () => (
+    <NavigationContainer>
+      <StatusBar style="dark" />
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          animation: Platform.OS === 'web' ? 'none' : 'default',
+          contentStyle: { 
+            backgroundColor: theme.colors.background,
+            ...(Platform.OS === 'web' ? {
+              position: 'relative',
+              zIndex: 1,
+              width: '100%',
+              height: '100%',
+              // Smooth transitions handled by CSS
+            } : {}),
+          },
+        }}
+      >
+        {!session ? (
+          <Stack.Screen name="Auth" component={AuthScreen} />
+        ) : (
+          <>
+            <Stack.Screen name="Camera" component={CameraScreen} />
+            <Stack.Screen name="Results" component={ResultsScreen} />
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <StatusBar style="dark" />
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: theme.colors.background },
-          }}
-        >
-          {!session ? (
-            <Stack.Screen name="Auth" component={AuthScreen} />
-          ) : (
-            <>
-              <Stack.Screen name="Camera" component={CameraScreen} />
-              <Stack.Screen name="Results" component={ResultsScreen} />
-            </>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
+      {Platform.OS === 'web' ? (
+        <View style={styles.webWrapper}>
+          <AppContent />
+        </View>
+      ) : (
+        <AppContent />
+      )}
     </SafeAreaProvider>
   );
 }
@@ -108,5 +162,25 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+    ...(Platform.OS === 'web' ? {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 10000,
+      width: '100%',
+      height: '100%',
+    } : {}),
+  },
+  webWrapper: {
+    flex: 1,
+    ...(Platform.OS === 'web' ? {
+      width: '100%',
+      height: '100vh',
+      position: 'relative',
+      zIndex: 1,
+      overflow: 'hidden',
+    } : {}),
   },
 });

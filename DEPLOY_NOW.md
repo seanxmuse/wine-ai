@@ -54,7 +54,22 @@
    ```
 
 ## Your App Will Be Live At:
-`https://your-project-name.vercel.app`
+
+**Main Production URLs (stable, always points to latest):**
+- `https://wine-scanner-flax.vercel.app` ⭐ **Use this one!**
+- `https://wine-scanner-seanxmuses-projects.vercel.app`
+- `https://wine-scanner-seanxmuse-seanxmuses-projects.vercel.app`
+
+**Project Dashboard:** https://vercel.com/seanxmuses-projects/wine-scanner
+
+**Note:** The main production URLs above always point to your latest deployment. Each deployment also gets a unique URL (e.g., `wine-scanner-mme11v94y-seanxmuses-projects.vercel.app`), but the main URLs are what you should use for production.
+
+## ✅ Deployment Status (CLI Method - Completed)
+- ✅ GitHub authentication: `seanxmuse`
+- ✅ Vercel authentication: `seanxmuse`
+- ✅ Project linked to GitHub: `https://github.com/seanxmuse/wine-ai`
+- ✅ Latest deployment: Ready (Production)
+- ⚠️ **Action Required:** Add environment variables in Vercel dashboard
 
 ## Next Steps After Deployment:
 

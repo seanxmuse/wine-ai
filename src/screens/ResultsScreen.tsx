@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { theme } from '../theme';
@@ -21,13 +22,33 @@ export function ResultsScreen() {
 
   const rankings = rankWines(wines);
 
-  const categories: { key: RankingCategory; label: string }[] = [
-    { key: 'highestRated', label: 'Highest Rated' },
-    { key: 'bestValue', label: 'Best Value' },
-    { key: 'mostInexpensive', label: 'Most Inexpensive' },
+  // Get top 3 wines from each category for summary
+  const summaryWines = {
+    highestRated: rankings.highestRated.slice(0, 3),
+    bestValue: rankings.bestValue.slice(0, 3),
+    mostInexpensive: rankings.mostInexpensive.slice(0, 3),
+  };
+
+  const categories: { key: RankingCategory; label: string; description: string }[] = [
+    { 
+      key: 'highestRated', 
+      label: 'Highest Rated',
+      description: 'Wines with the highest critic scores for exceptional quality'
+    },
+    { 
+      key: 'bestValue', 
+      label: 'Best Value',
+      description: 'Best balance of quality, price, and reasonable markup'
+    },
+    { 
+      key: 'mostInexpensive', 
+      label: 'Most Inexpensive',
+      description: 'Most affordable options on the list'
+    },
   ];
 
   const displayedWines = rankings[selectedCategory];
+  const currentCategory = categories.find(c => c.key === selectedCategory);
 
   return (
     <View style={styles.container}>
@@ -43,54 +64,137 @@ export function ResultsScreen() {
         <Text style={styles.subtitle}>{wines.length} wines scanned</Text>
       </View>
 
-      {/* Category Tabs */}
-      <View style={styles.tabs}>
-        {categories.map(({ key, label }) => (
-          <TouchableOpacity
-            key={key}
-            style={[
-              styles.tab,
-              selectedCategory === key && styles.tabActive,
-            ]}
-            onPress={() => setSelectedCategory(key)}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                selectedCategory === key && styles.tabTextActive,
-              ]}
-            >
-              {label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Wine List */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {displayedWines.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
-              {selectedCategory === 'highestRated'
-                ? 'No wines with critic scores found'
-                : selectedCategory === 'bestValue'
-                ? 'Not enough data to calculate value scores'
-                : 'No wines found'}
-            </Text>
+        {/* Summary Section - Best Picks */}
+        <View style={styles.summarySection}>
+          <Text style={styles.summaryTitle}>✨ Best Picks</Text>
+          <Text style={styles.summaryDescription}>
+            Our top recommendations based on quality, value, and price
+          </Text>
+
+          {/* Highest Rated Summary */}
+          {summaryWines.highestRated.length > 0 && (
+            <View style={styles.summaryCategory}>
+              <View style={styles.summaryCategoryHeader}>
+                <Text style={styles.summaryCategoryTitle}>🏆 Highest Rated</Text>
+                <Text style={styles.summaryCategoryReason}>
+                  Exceptional critic scores for premium quality
+                </Text>
+              </View>
+              {summaryWines.highestRated.map((wine, index) => (
+                <WineCard
+                  key={`highest-${index}`}
+                  wine={wine}
+                  rank={index + 1}
+                  category="highestRated"
+                />
+              ))}
+            </View>
+          )}
+
+          {/* Best Value Summary */}
+          {summaryWines.bestValue.length > 0 && (
+            <View style={styles.summaryCategory}>
+              <View style={styles.summaryCategoryHeader}>
+                <Text style={styles.summaryCategoryTitle}>💎 Best Value</Text>
+                <Text style={styles.summaryCategoryReason}>
+                  Great quality at reasonable prices with fair markup
+                </Text>
+              </View>
+              {summaryWines.bestValue.map((wine, index) => (
+                <WineCard
+                  key={`value-${index}`}
+                  wine={wine}
+                  rank={index + 1}
+                  category="bestValue"
+                />
+              ))}
+            </View>
+          )}
+
+          {/* Most Inexpensive Summary */}
+          {summaryWines.mostInexpensive.length > 0 && (
+            <View style={styles.summaryCategory}>
+              <View style={styles.summaryCategoryHeader}>
+                <Text style={styles.summaryCategoryTitle}>💰 Most Inexpensive</Text>
+                <Text style={styles.summaryCategoryReason}>
+                  Budget-friendly options without compromising too much
+                </Text>
+              </View>
+              {summaryWines.mostInexpensive.map((wine, index) => (
+                <WineCard
+                  key={`inexpensive-${index}`}
+                  wine={wine}
+                  rank={index + 1}
+                  category="mostInexpensive"
+                />
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* All Wines Section */}
+        <View style={styles.allWinesSection}>
+          <Text style={styles.allWinesTitle}>All Wines</Text>
+          <Text style={styles.allWinesDescription}>
+            Browse all {wines.length} wines by category
+          </Text>
+
+          {/* Category Tabs */}
+          <View style={styles.tabs}>
+            {categories.map(({ key, label }) => (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.tab,
+                  selectedCategory === key && styles.tabActive,
+                ]}
+                onPress={() => setSelectedCategory(key)}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    selectedCategory === key && styles.tabTextActive,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        ) : (
-          displayedWines.map((wine, index) => (
-            <WineCard
-              key={index}
-              wine={wine}
-              rank={index + 1}
-              category={selectedCategory}
-            />
-          ))
-        )}
+
+          {/* Category Description */}
+          {currentCategory && (
+            <Text style={styles.categoryDescription}>
+              {currentCategory.description}
+            </Text>
+          )}
+
+          {/* Wine List */}
+          {displayedWines.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>
+                {selectedCategory === 'highestRated'
+                  ? 'No wines with critic scores found'
+                  : selectedCategory === 'bestValue'
+                  ? 'Not enough data to calculate value scores'
+                  : 'No wines found'}
+              </Text>
+            </View>
+          ) : (
+            displayedWines.map((wine, index) => (
+              <WineCard
+                key={`${selectedCategory}-${index}`}
+                wine={wine}
+                rank={index + 1}
+                category={selectedCategory}
+              />
+            ))
+          )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -125,29 +229,100 @@ const styles = StyleSheet.create({
     ...theme.typography.styles.body,
     color: theme.colors.text.secondary,
   },
+  summarySection: {
+    marginBottom: theme.spacing['3xl'],
+  },
+  summaryTitle: {
+    ...theme.typography.styles.pageTitle,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
+    fontSize: Platform.OS === 'web' ? 32 : theme.typography.sizes['2xl'],
+  },
+  summaryDescription: {
+    ...theme.typography.styles.body,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xl,
+    lineHeight: Platform.OS === 'web' ? 24 : 20,
+  },
+  summaryCategory: {
+    marginBottom: theme.spacing.xl,
+  },
+  summaryCategoryHeader: {
+    marginBottom: theme.spacing.md,
+    paddingBottom: theme.spacing.sm,
+    borderBottomWidth: 2,
+    borderBottomColor: theme.colors.gold[200],
+  },
+  summaryCategoryTitle: {
+    ...theme.typography.styles.sectionTitle,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
+    fontSize: Platform.OS === 'web' ? 24 : theme.typography.sizes.xl,
+  },
+  summaryCategoryReason: {
+    ...theme.typography.styles.bodySmall,
+    color: theme.colors.text.secondary,
+    fontStyle: 'italic',
+  },
+  allWinesSection: {
+    marginTop: theme.spacing['2xl'],
+    paddingTop: theme.spacing['2xl'],
+    borderTopWidth: 2,
+    borderTopColor: theme.colors.divider,
+  },
+  allWinesTitle: {
+    ...theme.typography.styles.sectionTitle,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
+    fontSize: Platform.OS === 'web' ? 28 : theme.typography.sizes.xl,
+  },
+  allWinesDescription: {
+    ...theme.typography.styles.body,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.lg,
+  },
   tabs: {
     flexDirection: 'row',
     backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.xs,
+    marginBottom: theme.spacing.md,
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' as any,
+    }),
   },
   tab: {
     flex: 1,
     paddingVertical: theme.spacing.md,
     alignItems: 'center',
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
+    borderRadius: theme.borderRadius.sm,
+    ...(Platform.OS === 'web' && {
+      transition: 'all 0.2s ease' as any,
+      cursor: 'pointer' as any,
+    }),
   },
   tabActive: {
-    borderBottomColor: theme.colors.gold[500],
+    backgroundColor: theme.colors.gold[500],
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 2px 4px rgba(212, 175, 55, 0.3)' as any,
+    }),
   },
   tabText: {
     ...theme.typography.styles.label,
     color: theme.colors.text.secondary,
-    fontSize: 12,
+    fontSize: Platform.OS === 'web' ? 14 : 12,
+    fontWeight: '500' as any,
   },
   tabTextActive: {
-    color: theme.colors.gold[600],
+    color: theme.colors.neutral[50],
+    fontWeight: '600' as any,
+  },
+  categoryDescription: {
+    ...theme.typography.styles.bodySmall,
+    color: theme.colors.text.tertiary,
+    marginBottom: theme.spacing.lg,
+    fontStyle: 'italic',
+    paddingLeft: theme.spacing.sm,
   },
   scrollView: {
     flex: 1,
