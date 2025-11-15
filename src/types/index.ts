@@ -37,7 +37,9 @@ export interface Scan {
 export interface WineLabsMatchResponse {
   lwin7?: string;
   lwin?: string;
-  display_name: string;
+  display_name?: string;
+  confidence?: number; // Our calculated confidence based on match quality
+  matched: boolean;     // Whether we got a match from Wine Labs
 }
 
 export interface WineLabsPriceStats {

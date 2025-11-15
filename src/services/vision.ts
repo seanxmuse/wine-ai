@@ -46,18 +46,34 @@ async function parseWithGemini(imageUri: string): Promise<WineListItem[]> {
             {
               parts: [
                 {
-                  text: `You are a wine list parser. Extract all wines from this wine list image and return them as a JSON array. For each wine, extract:
-- wineName (full wine name including producer)
-- vintage (year, if visible)
-- price (numeric value only, no currency symbols)
+                  text: `You are an expert wine list parser. Extract ALL wines from this restaurant wine list image.
 
-Return ONLY a valid JSON array with no additional text or markdown formatting. Example format:
+CRITICAL INSTRUCTIONS:
+1. Extract the FULL producer name (e.g., "Château Margaux" not "Margaux")
+2. Include vintage year if visible (4-digit year like "2015" or "2018")
+3. Extract numeric price ONLY (no currency symbols, commas, or decimals)
+4. Preserve proper wine name spelling (don't abbreviate "Château" to "Ch" or "Domaine" to "Dom")
+5. Keep accented characters (é, è, ô, etc.) when visible
+
+FORMAT RULES:
+- Return ONLY valid JSON array (no markdown, no code blocks, no explanatory text)
+- Each wine must have: wineName, vintage (optional), price
+- wineName should be the complete producer + wine name
+- Vintage should be a string (e.g., "2015" or null if not visible)
+- Price should be a number (e.g., 450 not "450" or "$450")
+
+EXAMPLES:
 [
   {"wineName": "Château Margaux", "vintage": "2015", "price": 450},
-  {"wineName": "Domaine de la Romanée-Conti", "vintage": "2018", "price": 1200}
+  {"wineName": "Domaine de la Romanée-Conti La Tâche", "vintage": "2018", "price": 1200},
+  {"wineName": "Penfolds Grange", "vintage": "2016", "price": 680}
 ]
 
-If you cannot clearly read a wine's information, skip it. Only include wines you can confidently parse.`,
+QUALITY CONTROL:
+- Only include wines you can read with 80%+ confidence
+- If vintage is unclear, omit it (don't guess)
+- If price is unclear, skip that wine entirely
+- Don't invent or hallucinate wine names`,
                 },
                 {
                   inlineData: {
