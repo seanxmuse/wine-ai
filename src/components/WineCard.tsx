@@ -131,12 +131,14 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
   },
   wineName: {
-    ...theme.typography.styles.cardTitle,
+    fontSize: 24,
+    lineHeight: 1.4,
+    letterSpacing: 0,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.xs,
-    ...(Platform.OS === 'web' && {
-      fontFamily: 'Georgia, "Times New Roman", serif' as any,
-    }),
+    fontFamily: Platform.OS === 'web'
+      ? 'Georgia, "Times New Roman", serif' as any
+      : theme.typography.fonts.displayLight,
   },
   vintage: {
     ...theme.typography.styles.bodyMedium,
