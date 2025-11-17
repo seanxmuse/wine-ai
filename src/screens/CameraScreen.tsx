@@ -181,11 +181,21 @@ export function CameraScreen() {
     try {
       logger.info('PROCESS', 'Starting wine list processing', { imageUri });
 
-      // Step 1: Upload image to Supabase Storage
+      // Step 1: Upload image to Supabase Storage (optional - continue if it fails)
       setProcessingStep('uploading');
       logger.info('UPLOAD', 'Starting image upload...');
-      const imageUrl = await uploadImage(imageUri);
-      logger.success('UPLOAD', 'Image uploaded successfully', { imageUrl });
+      let imageUrl: string | undefined;
+      try {
+        imageUrl = await uploadImage(imageUri);
+        logger.success('UPLOAD', 'Image uploaded successfully', { imageUrl });
+      } catch (uploadError: any) {
+        logger.warn('UPLOAD', 'Image upload failed, continuing without storage', { 
+          error: uploadError?.message || 'Unknown error' 
+        });
+        // Continue processing without storing the image
+        // The image is still available locally for parsing
+        imageUrl = undefined;
+      }
 
       // Step 2: Parse wine list with LLM
       setProcessingStep('parsing');
@@ -301,9 +311,9 @@ export function CameraScreen() {
         })
       );
 
-      // Step 5: Save scan to database
+      // Step 5: Save scan to database (only if image was uploaded)
       const { data: session } = await supabase.auth.getSession();
-      if (session?.session?.user) {
+      if (session?.session?.user && imageUrl) {
         const { data: scan, error: scanError } = await supabase
           .from('scans')
           .insert({
@@ -358,6 +368,18 @@ export function CameraScreen() {
 
     const userId = session.session.user.id;
 
+    // Check if bucket exists first
+    const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+    if (bucketError) {
+      console.error('Error checking buckets:', bucketError);
+      throw new Error(`Storage bucket check failed: ${bucketError.message}`);
+    }
+
+    const wineListsBucket = buckets?.find(b => b.id === 'wine-lists');
+    if (!wineListsBucket) {
+      throw new Error('Storage bucket "wine-lists" does not exist. Please create it in Supabase Storage settings.');
+    }
+
     // Detect image type from URI or blob
     let fileExtension = 'jpg';
     let contentType = 'image/jpeg';
@@ -395,6 +417,17 @@ export function CameraScreen() {
 
     if (error) {
       console.error('Storage upload error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+      });
+      
+      // Provide helpful error message
+      if (error.message?.includes('new row violates row-level security')) {
+        throw new Error('Storage upload failed: Row-level security policy issue. Check Supabase storage policies.');
+      } else if (error.message?.includes('500') || error.message?.includes('Internal Server Error')) {
+        throw new Error('Storage upload failed: Server error (500). Check Supabase storage bucket configuration.');
+      }
       throw error;
     }
 
