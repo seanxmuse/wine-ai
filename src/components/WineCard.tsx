@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { theme } from '../theme';
 import type { Wine, RankingCategory } from '../types';
 import { formatPrice, formatMarkup, getMarkupColor } from '../utils/wineRanking';
@@ -134,16 +134,25 @@ const styles = StyleSheet.create({
     ...theme.typography.styles.cardTitle,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.xs,
+    ...(Platform.OS === 'web' && {
+      fontFamily: 'Georgia, "Times New Roman", serif' as any,
+    }),
   },
   vintage: {
     ...theme.typography.styles.bodyMedium,
     color: theme.colors.text.accent,
     marginBottom: theme.spacing.sm,
+    ...(Platform.OS === 'web' && {
+      fontFamily: 'system-ui, -apple-system, sans-serif' as any,
+    }),
   },
   detail: {
     ...theme.typography.styles.bodySmall,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.xs,
+    ...(Platform.OS === 'web' && {
+      fontFamily: 'system-ui, -apple-system, sans-serif' as any,
+    }),
   },
   pricingSection: {
     marginTop: theme.spacing.md,
