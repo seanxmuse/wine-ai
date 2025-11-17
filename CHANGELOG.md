@@ -3,6 +3,10 @@
 ## [Unreleased]
 
 ### Added
+- Created FOLDER_ROLES.md - Comprehensive guide explaining the purpose and role of each folder in the codebase
+  - High-level explanation of folder structure for beginners
+  - Visual flow diagrams showing how folders work together
+  - Quick reference guide for common tasks
 - Supabase configuration setup
   - Created `.env` file with Supabase credentials
   - Added Supabase credentials to `app.json` extra config

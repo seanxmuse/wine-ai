@@ -6,17 +6,23 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Switch,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { theme } from '../theme';
 import type { Wine, RankingCategory } from '../types';
 import { rankWines, formatPrice, formatMarkup, getMarkupColor } from '../utils/wineRanking';
 import { WineCard } from '../components/WineCard';
+import { SAMPLE_WINES } from '../utils/sampleData';
 
 export function ResultsScreen() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { wines } = route.params as { wines: Wine[] };
+  const { wines: routeWines } = route.params as { wines: Wine[] };
+
+  // Debug mode toggle - use sample data instead of API data
+  const [debugMode, setDebugMode] = useState(false);
+  const wines = debugMode ? SAMPLE_WINES : routeWines;
 
   const [selectedCategory, setSelectedCategory] = useState<RankingCategory>('highestRated');
 
@@ -62,6 +68,17 @@ export function ResultsScreen() {
         </TouchableOpacity>
         <Text style={styles.title}>Wine List Analysis</Text>
         <Text style={styles.subtitle}>{wines.length} wines scanned</Text>
+
+        {/* Debug Mode Toggle */}
+        <View style={styles.debugToggle}>
+          <Text style={styles.debugLabel}>Debug Mode (Sample Data)</Text>
+          <Switch
+            value={debugMode}
+            onValueChange={setDebugMode}
+            trackColor={{ false: theme.colors.neutral[300], true: theme.colors.gold[500] }}
+            thumbColor={debugMode ? theme.colors.gold[700] : theme.colors.neutral[50]}
+          />
+        </View>
       </View>
 
       <ScrollView
@@ -227,6 +244,19 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...theme.typography.styles.body,
+    color: theme.colors.text.secondary,
+  },
+  debugToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  debugLabel: {
+    ...theme.typography.styles.bodySmall,
     color: theme.colors.text.secondary,
   },
   summarySection: {

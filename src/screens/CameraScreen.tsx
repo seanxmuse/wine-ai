@@ -185,8 +185,27 @@ export function CameraScreen() {
       logger.info('MATCH', 'Starting Wine Labs matching...');
       const queries = parsedWines.map(w => `${w.wineName} ${w.vintage || ''}`);
       logger.debug('MATCH', 'Match queries', { queries });
+
       const matches = await matchWinesToLwin(queries);
-      logger.success('MATCH', 'Wine Labs matching complete', { matches });
+      logger.success('MATCH', 'Wine Labs matching complete');
+
+      // Log matching statistics
+      const matchedCount = matches.filter(m => m?.lwin || m?.lwin7).length;
+      const unmatchedCount = parsedWines.length - matchedCount;
+      logger.info('MATCH', `Matched: ${matchedCount}/${parsedWines.length} wines`, {
+        matchedCount,
+        unmatchedCount,
+        matchRate: `${Math.round((matchedCount / parsedWines.length) * 100)}%`
+      });
+
+      // Log unmatched wines for debugging
+      if (unmatchedCount > 0) {
+        const unmatchedWines = parsedWines
+          .map((wine, i) => ({ wine, match: matches[i] }))
+          .filter(({ match }) => !match?.lwin && !match?.lwin7)
+          .map(({ wine }) => `${wine.wineName} ${wine.vintage || ''}`);
+        logger.warn('MATCH', `Unmatched wines (${unmatchedCount}):`, unmatchedWines);
+      }
 
       // Step 4: Fetch pricing and scores for each wine
       setProcessingStep('fetching');
@@ -228,10 +247,13 @@ export function CameraScreen() {
             }
           }
 
-          return {
+          // Build wine object with fallback for missing display name
+          const displayName = match?.display_name || match?.wl_display_name || parsed.wineName || 'Unknown Wine';
+
+          const wine: Wine = {
             lwin7: match?.lwin7,
             lwin: match?.lwin,
-            displayName: match?.display_name || parsed.wineName,
+            displayName,
             vintage: parsed.vintage,
             restaurantPrice: parsed.price,
             realPrice,
@@ -239,6 +261,16 @@ export function CameraScreen() {
             criticScore,
             critic,
           };
+
+          // Log wine data for debugging
+          logger.debug('WINE', `Processed wine: ${displayName}`, {
+            hasLwin: !!lwin,
+            hasPrice: !!realPrice,
+            hasScore: !!criticScore,
+            markup: markup ? `${markup.toFixed(0)}%` : 'N/A'
+          });
+
+          return wine;
         })
       );
 

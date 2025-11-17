@@ -47,7 +47,7 @@ export function WineCard({ wine, rank, category }: WineCardProps) {
             </Text>
           </View>
 
-          {wine.realPrice && (
+          {wine.realPrice ? (
             <>
               <View style={styles.priceRow}>
                 <Text style={styles.priceLabel}>Market Price</Text>
@@ -67,11 +67,15 @@ export function WineCard({ wine, rank, category }: WineCardProps) {
                 </View>
               )}
             </>
+          ) : (
+            <View style={styles.noDataRow}>
+              <Text style={styles.noDataText}>Market price data not available</Text>
+            </View>
           )}
         </View>
 
         {/* Critic Score */}
-        {wine.criticScore && (
+        {wine.criticScore ? (
           <View style={styles.scoreSection}>
             <View style={styles.scoreBadge}>
               <Text style={styles.scoreValue}>{wine.criticScore}</Text>
@@ -80,6 +84,10 @@ export function WineCard({ wine, rank, category }: WineCardProps) {
             {wine.critic && (
               <Text style={styles.criticName}>{wine.critic}</Text>
             )}
+          </View>
+        ) : (
+          <View style={styles.noScoreSection}>
+            <Text style={styles.noDataText}>Critic score not available</Text>
           </View>
         )}
 
@@ -219,5 +227,19 @@ const styles = StyleSheet.create({
     ...theme.typography.styles.bodySmall,
     color: theme.colors.gold[800],
     fontFamily: theme.typography.fonts.bodyMedium,
+  },
+  noDataRow: {
+    marginTop: theme.spacing.sm,
+  },
+  noDataText: {
+    ...theme.typography.styles.bodySmall,
+    color: theme.colors.text.tertiary,
+    fontStyle: 'italic',
+  },
+  noScoreSection: {
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
   },
 });
