@@ -31,11 +31,14 @@ export async function parseWineListImage(
 
 async function parseWithGemini(imageUri: string): Promise<WineListItem[]> {
   try {
+    console.log('[VISION] Starting Gemini parsing for image:', imageUri);
+
     // Convert image to base64
     const base64Image = await imageToBase64(imageUri);
+    console.log('[VISION] Image converted to base64, length:', base64Image.length);
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
@@ -46,34 +49,17 @@ async function parseWithGemini(imageUri: string): Promise<WineListItem[]> {
             {
               parts: [
                 {
-                  text: `You are an expert wine list parser. Extract ALL wines from this restaurant wine list image.
+                  text: `Extract all wines from this wine list. Return ONLY a JSON array, no markdown.
 
-CRITICAL INSTRUCTIONS:
-1. Extract the FULL producer name (e.g., "Château Margaux" not "Margaux")
-2. Include vintage year if visible (4-digit year like "2015" or "2018")
-3. Extract numeric price ONLY (no currency symbols, commas, or decimals)
-4. Preserve proper wine name spelling (don't abbreviate "Château" to "Ch" or "Domaine" to "Dom")
-5. Keep accented characters (é, è, ô, etc.) when visible
+Rules:
+- Full producer name (e.g., "Château Margaux" not "Ch. Margaux")
+- Include vintage if visible (e.g., "2015")
+- Price as number only (e.g., 450 not "$450")
+- Each wine: {"wineName": "Full Name", "vintage": "2015", "price": 450}
+- Skip wines with unclear prices
+- Only 80%+ confidence items
 
-FORMAT RULES:
-- Return ONLY valid JSON array (no markdown, no code blocks, no explanatory text)
-- Each wine must have: wineName, vintage (optional), price
-- wineName should be the complete producer + wine name
-- Vintage should be a string (e.g., "2015" or null if not visible)
-- Price should be a number (e.g., 450 not "450" or "$450")
-
-EXAMPLES:
-[
-  {"wineName": "Château Margaux", "vintage": "2015", "price": 450},
-  {"wineName": "Domaine de la Romanée-Conti La Tâche", "vintage": "2018", "price": 1200},
-  {"wineName": "Penfolds Grange", "vintage": "2016", "price": 680}
-]
-
-QUALITY CONTROL:
-- Only include wines you can read with 80%+ confidence
-- If vintage is unclear, omit it (don't guess)
-- If price is unclear, skip that wine entirely
-- Don't invent or hallucinate wine names`,
+Example: [{"wineName": "Château Margaux", "vintage": "2015", "price": 450}]`,
                 },
                 {
                   inlineData: {
@@ -86,7 +72,7 @@ QUALITY CONTROL:
           ],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 8192, // Support large wine lists (hundreds of wines)
           },
         }),
       }
@@ -94,29 +80,38 @@ QUALITY CONTROL:
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('[VISION] Gemini API error:', errorData);
       throw new Error(`Gemini API error: ${response.statusText} - ${JSON.stringify(errorData)}`);
     }
 
     const data = await response.json();
+    console.log('[VISION] Gemini raw response:', JSON.stringify(data, null, 2));
+
     const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    console.log('[VISION] Extracted content:', content);
 
     // Clean up response - remove markdown code blocks if present
     const cleanedContent = content
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
+    console.log('[VISION] Cleaned content:', cleanedContent);
 
     // Parse JSON from response
     const wines = JSON.parse(cleanedContent);
-    return wines.map((wine: any) => ({
+    console.log('[VISION] Parsed wines:', wines);
+
+    const result = wines.map((wine: any) => ({
       rawText: `${wine.wineName} ${wine.vintage || ''} $${wine.price}`.trim(),
       wineName: wine.wineName,
       vintage: wine.vintage,
       price: parseFloat(wine.price),
       confidence: 0.9,
     }));
+    console.log('[VISION] Final result:', result);
+    return result;
   } catch (error) {
-    console.error('Error parsing with Gemini:', error);
+    console.error('[VISION] Error parsing with Gemini:', error);
     throw error;
   }
 }

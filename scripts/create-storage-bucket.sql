@@ -31,3 +31,4 @@ CREATE POLICY "Users can delete own wine list images"
     auth.uid()::text = (storage.foldername(name))[1]
   );
 
+

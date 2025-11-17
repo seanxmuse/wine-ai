@@ -52,3 +52,4 @@ If direct connections fail:
 - Ensure you're logged into Supabase CLI before using `db push`
 - Check that your database password is correct in `.env`
 
+

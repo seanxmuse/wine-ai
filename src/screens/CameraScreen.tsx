@@ -20,6 +20,7 @@ import { parseWineListImage } from '../services/vision';
 import { matchWinesToLwin, getPriceStats, getCriticScores } from '../services/winelabs';
 import { calculateMarkup } from '../utils/wineRanking';
 import { supabase } from '../services/supabase';
+import { logger } from '../utils/logger';
 
 type ProcessingStep = 'idle' | 'uploading' | 'parsing' | 'matching' | 'fetching' | 'complete';
 
@@ -128,7 +129,9 @@ export function CameraScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
+        quality: 0.5, // Lower quality to reduce size for vision API
+        allowsEditing: false,
+        exif: false,
       });
 
       if (!result.canceled && result.assets[0]) {
@@ -154,15 +157,22 @@ export function CameraScreen() {
 
   const processWineList = async (imageUri: string) => {
     try {
+      logger.info('PROCESS', 'Starting wine list processing', { imageUri });
+
       // Step 1: Upload image to Supabase Storage
       setProcessingStep('uploading');
+      logger.info('UPLOAD', 'Starting image upload...');
       const imageUrl = await uploadImage(imageUri);
+      logger.success('UPLOAD', 'Image uploaded successfully', { imageUrl });
 
       // Step 2: Parse wine list with LLM
       setProcessingStep('parsing');
+      logger.info('PARSE', 'Starting vision AI parsing...');
       const parsedWines = await parseWineListImage(imageUri);
+      logger.success('PARSE', `Extracted ${parsedWines.length} wines`, { parsedWines });
 
       if (parsedWines.length === 0) {
+        logger.warn('PARSE', 'No wines found in image');
         Alert.alert('No wines found', 'Could not extract wines from this image. Please try again.');
         setIsProcessing(false);
         setProcessingStep('idle');
@@ -172,8 +182,11 @@ export function CameraScreen() {
 
       // Step 3: Match wines to LWIN identifiers
       setProcessingStep('matching');
+      logger.info('MATCH', 'Starting Wine Labs matching...');
       const queries = parsedWines.map(w => `${w.wineName} ${w.vintage || ''}`);
+      logger.debug('MATCH', 'Match queries', { queries });
       const matches = await matchWinesToLwin(queries);
+      logger.success('MATCH', 'Wine Labs matching complete', { matches });
 
       // Step 4: Fetch pricing and scores for each wine
       setProcessingStep('fetching');
@@ -267,7 +280,10 @@ export function CameraScreen() {
       setIsProcessing(false);
       setProcessingStep('idle');
     } catch (error) {
-      console.error('Error processing wine list:', error);
+      logger.error('PROCESS', 'Failed to process wine list', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       Alert.alert('Error', 'Failed to process wine list. Please try again.');
       setIsProcessing(false);
       setProcessingStep('idle');
@@ -282,53 +298,52 @@ export function CameraScreen() {
     }
 
     const userId = session.session.user.id;
-    const fileName = `${userId}/${Date.now()}.jpg`;
 
-    if (Platform.OS === 'web') {
-      // On web, fetch the image and convert to Blob
-      const response = await fetch(uri);
-      const blob = await response.blob();
+    // Detect image type from URI or blob
+    let fileExtension = 'jpg';
+    let contentType = 'image/jpeg';
 
-      const { error } = await supabase.storage
-        .from('wine-lists')
-        .upload(fileName, blob, {
-          contentType: 'image/jpeg',
-          upsert: false,
-        });
+    // Fetch the image and convert to Blob
+    const response = await fetch(uri);
+    const blob = await response.blob();
 
-      if (error) {
-        console.error('Storage upload error:', error);
-        throw error;
+    // Determine content type from blob or URI
+    if (blob.type) {
+      contentType = blob.type;
+      if (blob.type === 'image/png') {
+        fileExtension = 'png';
+      } else if (blob.type === 'image/heic') {
+        fileExtension = 'heic';
+      } else if (blob.type === 'image/jpeg' || blob.type === 'image/jpg') {
+        fileExtension = 'jpg';
       }
-
-      const { data: urlData } = supabase.storage
-        .from('wine-lists')
-        .getPublicUrl(fileName);
-
-      return urlData.publicUrl;
-    } else {
-      // On native, read file as blob
-      const response = await fetch(uri);
-      const blob = await response.blob();
-
-      const { error } = await supabase.storage
-        .from('wine-lists')
-        .upload(fileName, blob, {
-          contentType: 'image/jpeg',
-          upsert: false,
-        });
-
-      if (error) {
-        console.error('Storage upload error:', error);
-        throw error;
-      }
-
-      const { data: urlData } = supabase.storage
-        .from('wine-lists')
-        .getPublicUrl(fileName);
-
-      return urlData.publicUrl;
+    } else if (uri.toLowerCase().includes('.png')) {
+      contentType = 'image/png';
+      fileExtension = 'png';
+    } else if (uri.toLowerCase().includes('.heic')) {
+      contentType = 'image/heic';
+      fileExtension = 'heic';
     }
+
+    const fileName = `${userId}/${Date.now()}.${fileExtension}`;
+
+    const { error } = await supabase.storage
+      .from('wine-lists')
+      .upload(fileName, blob, {
+        contentType,
+        upsert: false,
+      });
+
+    if (error) {
+      console.error('Storage upload error:', error);
+      throw error;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('wine-lists')
+      .getPublicUrl(fileName);
+
+    return urlData.publicUrl;
   };
 
   // Show preview screen if image is selected

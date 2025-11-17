@@ -64,3 +64,4 @@ Backend (Supabase)
 
 You can't host the frontend on Supabase because Supabase doesn't provide frontend hosting - it's a backend-as-a-service platform.
 
+

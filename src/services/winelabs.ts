@@ -5,13 +5,12 @@ import type {
   WineLabsWineInfo,
 } from '../types';
 
-const WINELABS_API_BASE = 'https://winelabs.ai/api';
-const API_KEY = process.env.EXPO_PUBLIC_WINELABS_API_KEY || '';
-const USER_ID = process.env.EXPO_PUBLIC_WINELABS_USER_ID || '';
-
-if (!API_KEY) {
-  console.warn('Wine Labs API key not found');
-}
+// Use GCP Cloud Function proxy to avoid CORS issues
+// Note: Direct calls to external-api.wine-labs.com work but may have CORS restrictions
+const USE_GCP_PROXY = true;
+const WINELABS_PROXY = USE_GCP_PROXY
+  ? 'https://winelabs-proxy-dlfk6dpu3q-uc.a.run.app'
+  : 'https://external-api.wine-labs.com';
 
 /**
  * Preprocess wine query to improve matching success rate
@@ -91,25 +90,38 @@ export async function matchWinesToLwin(
     console.log('Original queries:', queries);
     console.log('Preprocessed queries:', preprocessedQueries);
 
-    const response = await fetch(`${WINELABS_API_BASE}/match_to_lwin_batch`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: USER_ID,
-        queries: preprocessedQueries.slice(0, 100), // Max 100 per batch
-      }),
-    });
+    // Process in chunks of 20 to avoid timeout (60s GCP limit)
+    const CHUNK_SIZE = 20;
+    const allResults: any[] = [];
 
-    if (!response.ok) {
-      throw new Error(`Wine Labs API error: ${response.statusText}`);
+    for (let i = 0; i < preprocessedQueries.length; i += CHUNK_SIZE) {
+      const chunk = preprocessedQueries.slice(i, i + CHUNK_SIZE);
+      console.log(`Processing wines ${i + 1}-${Math.min(i + CHUNK_SIZE, preprocessedQueries.length)} of ${preprocessedQueries.length}`);
+
+      const response = await fetch(WINELABS_PROXY, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          endpoint: 'match_to_lwin_batch',
+          body: {
+            queries: chunk,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Wine Labs API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const results = data.results || data;
+      allResults.push(...results);
     }
 
-    const data = await response.json();
-
     // Enhance response with match status and confidence scores
-    return data.map((match: any, index: number) => {
+    return allResults.map((match: any, index: number) => {
       const hasMatch = !!(match?.lwin || match?.lwin7);
       const confidence = calculateMatchConfidence(
         queries[index],
@@ -142,7 +154,6 @@ export async function getPriceStats(
 ): Promise<WineLabsPriceStats> {
   try {
     const body: any = {
-      user_id: USER_ID,
       region,
     };
 
@@ -154,12 +165,15 @@ export async function getPriceStats(
       throw new Error('Either query or lwin must be provided');
     }
 
-    const response = await fetch(`${WINELABS_API_BASE}/price_stats`, {
+    const response = await fetch(WINELABS_PROXY, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        endpoint: 'price_stats',
+        body,
+      }),
     });
 
     if (!response.ok) {
@@ -181,9 +195,7 @@ export async function getCriticScores(
   vintage?: string
 ): Promise<WineLabsCriticScore[]> {
   try {
-    const body: any = {
-      user_id: USER_ID,
-    };
+    const body: any = {};
 
     if (lwin) {
       body.lwin = lwin;
@@ -197,12 +209,15 @@ export async function getCriticScores(
       body.vintage = vintage;
     }
 
-    const response = await fetch(`${WINELABS_API_BASE}/critic_scores`, {
+    const response = await fetch(WINELABS_PROXY, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        endpoint: 'critic_scores',
+        body,
+      }),
     });
 
     if (!response.ok) {
@@ -223,9 +238,7 @@ export async function getWineInfo(
   lwin?: string
 ): Promise<WineLabsWineInfo | null> {
   try {
-    const body: any = {
-      user_id: USER_ID,
-    };
+    const body: any = {};
 
     if (lwin) {
       body.lwin = lwin;
@@ -235,12 +248,15 @@ export async function getWineInfo(
       throw new Error('Either query or lwin must be provided');
     }
 
-    const response = await fetch(`${WINELABS_API_BASE}/wine_info`, {
+    const response = await fetch(WINELABS_PROXY, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        endpoint: 'wine_info',
+        body,
+      }),
     });
 
     if (!response.ok) {
