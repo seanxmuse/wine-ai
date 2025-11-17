@@ -604,6 +604,10 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 100,
+    ...(Platform.OS === 'web' && {
+      pointerEvents: 'auto' as any,
+    }),
   },
   title: {
     ...theme.typography.styles.sectionTitle,
@@ -633,9 +637,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     borderRadius: theme.borderRadius.full,
     marginTop: theme.spacing.md,
+    zIndex: 1000,
+    elevation: 5,
     ...(Platform.OS === 'web' && {
       cursor: 'pointer' as any,
       transition: 'all 0.2s ease' as any,
+      pointerEvents: 'auto' as any,
+      position: 'relative' as any,
     }),
   },
   debugButtonText: {
