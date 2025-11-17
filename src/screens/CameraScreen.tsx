@@ -21,6 +21,7 @@ import { matchWinesToLwin, getPriceStats, getCriticScores } from '../services/wi
 import { calculateMarkup } from '../utils/wineRanking';
 import { supabase } from '../services/supabase';
 import { logger } from '../utils/logger';
+import { SAMPLE_WINES } from '../utils/sampleData';
 
 type ProcessingStep = 'idle' | 'uploading' | 'parsing' | 'matching' | 'fetching' | 'complete';
 
@@ -153,6 +154,11 @@ export function CameraScreen() {
 
   const cancelPreview = () => {
     setPreviewImage(null);
+  };
+
+  const viewSampleData = () => {
+    logger.info('DEBUG', 'Viewing sample data (no API calls)');
+    (navigation as any).navigate('Results', { wines: SAMPLE_WINES });
   };
 
   const processWineList = async (imageUri: string) => {
@@ -450,6 +456,16 @@ export function CameraScreen() {
             <Text style={styles.subtitle}>
               Position wine list within frame
             </Text>
+
+            {/* Debug Mode Button */}
+            <TouchableOpacity
+              style={styles.debugButton}
+              onPress={viewSampleData}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="flask-outline" size={16} color={theme.colors.gold[700]} />
+              <Text style={styles.debugButtonText}>View Sample Data</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.frameContainer}>
@@ -592,6 +608,26 @@ const styles = StyleSheet.create({
       paddingTop: '0px' as any,
       lineHeight: '1.5' as any,
     }),
+  },
+  debugButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.gold[100],
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.full,
+    marginTop: theme.spacing.md,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer' as any,
+      transition: 'all 0.2s ease' as any,
+    }),
+  },
+  debugButtonText: {
+    ...theme.typography.styles.label,
+    color: theme.colors.gold[700],
+    fontSize: 13,
+    fontWeight: '600' as any,
+    marginLeft: theme.spacing.xs,
   },
   frameContainer: {
     flex: 1,
