@@ -22,7 +22,7 @@ export function WineCard({ wine, rank, category }: WineCardProps) {
 
       {/* Wine Info */}
       <View style={styles.content}>
-        <Text style={styles.wineName} numberOfLines={2}>
+        <Text style={styles.wineName}>
           {wine.displayName}
         </Text>
 
@@ -131,14 +131,18 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
   },
   wineName: {
-    fontSize: 24,
+    fontSize: 20,
     lineHeight: 1.4,
     letterSpacing: 0,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
     fontFamily: Platform.OS === 'web'
       ? 'Georgia, "Times New Roman", serif' as any
       : theme.typography.fonts.displayLight,
+    ...(Platform.OS === 'web' && {
+      wordWrap: 'break-word' as any,
+      overflowWrap: 'break-word' as any,
+    }),
   },
   vintage: {
     ...theme.typography.styles.bodyMedium,
@@ -172,6 +176,11 @@ const styles = StyleSheet.create({
     ...theme.typography.styles.caption,
     color: theme.colors.text.secondary,
     textTransform: 'uppercase',
+    fontSize: 11,
+    marginBottom: 4,
+    ...(Platform.OS === 'web' && {
+      fontFamily: 'system-ui, -apple-system, sans-serif' as any,
+    }),
   },
   restaurantPrice: {
     ...theme.typography.styles.bodyLarge,
