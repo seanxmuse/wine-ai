@@ -11,6 +11,7 @@ export interface Wine {
   markup?: number;
   criticScore?: number;
   critic?: string;
+  criticCount?: number; // Number of critics/enthusiasts who rated this wine
   varietal?: string;
   region?: string;
   color?: string;

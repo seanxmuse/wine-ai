@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Fixed
+- Fixed WineCard layout issues in ResultsScreen
+  - Removed incorrect `marginBottom` from `priceLabel` style (was causing layout issues in row layout)
+  - Fixed typography error: changed `bodyMedium` style reference to use `body` style with `bodyMedium` font family
+  - Increased rank badge text size to 32px for better visibility
+  - Improved rank badge styling with `minWidth` for consistent sizing
+  - Fixed overlapping text in price rows by adding proper flex constraints
+    - Added `flexShrink: 1` and `maxWidth: '60%'` to price labels to prevent overflow
+    - Added `flexShrink: 0` to price values to keep them from shrinking
+    - Added proper spacing (`marginRight`/`marginLeft`) between labels and values
+    - Added `textDecorationLine: 'line-through'` to market price (realPrice) to match design
+    - Added `flexWrap: 'wrap'` to score section for better overflow handling
+    - Added text overflow handling for web platform (ellipsis, nowrap)
+
 ### Added
 - Created FOLDER_ROLES.md - Comprehensive guide explaining the purpose and role of each folder in the codebase
   - High-level explanation of folder structure for beginners

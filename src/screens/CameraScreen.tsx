@@ -240,6 +240,7 @@ export function CameraScreen() {
           let markup: number | undefined;
           let criticScore: number | undefined;
           let critic: string | undefined;
+          let criticCount: number | undefined;
 
           if (lwin) {
             // Get price stats
@@ -257,11 +258,14 @@ export function CameraScreen() {
             try {
               const scores = await getCriticScores(undefined, lwin, parsed.vintage);
               if (scores.length > 0) {
-                // Use highest score
+                // Calculate average score across all critics
+                const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
+                criticScore = Math.round((totalScore / scores.length) * 100) / 100; // Round to 2 decimal places
+                criticCount = scores.length;
+                // Keep the highest scoring critic name for reference
                 const topScore = scores.reduce((max, s) =>
                   s.score > max.score ? s : max
                 );
-                criticScore = topScore.score;
                 critic = topScore.critic;
               }
             } catch (e) {
@@ -270,7 +274,7 @@ export function CameraScreen() {
           }
 
           // Build wine object with fallback for missing display name
-          const displayName = match?.display_name || match?.wl_display_name || parsed.wineName || 'Unknown Wine';
+          const displayName = match?.display_name || parsed.wineName || 'Unknown Wine';
 
           const wine: Wine = {
             lwin7: match?.lwin7,
@@ -282,6 +286,7 @@ export function CameraScreen() {
             markup,
             criticScore,
             critic,
+            criticCount,
           };
 
           // Log wine data for debugging
@@ -481,6 +486,16 @@ export function CameraScreen() {
             >
               <Ionicons name="flask-outline" size={16} color={theme.colors.gold[700]} />
               <Text style={styles.debugButtonText}>View Sample Data</Text>
+            </TouchableOpacity>
+
+            {/* New Debug Button */}
+            <TouchableOpacity
+              style={[styles.debugButton, { marginTop: theme.spacing.sm, backgroundColor: theme.colors.accent[100] }]}
+              onPress={() => (navigation as any).navigate('NewResults')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="bug-outline" size={16} color={theme.colors.accent[700]} />
+              <Text style={[styles.debugButtonText, { color: theme.colors.accent[700] }]}>View New Sample Page</Text>
             </TouchableOpacity>
           </View>
 

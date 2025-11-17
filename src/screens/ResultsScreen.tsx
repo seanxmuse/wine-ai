@@ -60,8 +60,12 @@ export function ResultsScreen() {
         >
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Wine List Analysis</Text>
-        <Text style={styles.subtitle}>{wines.length} wines scanned</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>Wine List Analysis</Text>
+        </View>
+        <View style={styles.subtitleContainer}>
+          <Text style={styles.subtitle}>{wines.length} wines scanned</Text>
+        </View>
       </View>
 
       <ScrollView
@@ -70,19 +74,27 @@ export function ResultsScreen() {
       >
         {/* Summary Section - Best Picks */}
         <View style={styles.summarySection}>
-          <Text style={styles.summaryTitle}>✨ Best Picks</Text>
-          <Text style={styles.summaryDescription}>
-            Our top recommendations based on quality, value, and price
-          </Text>
+          <View style={styles.summaryTitleContainer}>
+            <Text style={styles.summaryTitle}>✨ Best Picks</Text>
+          </View>
+          <View style={styles.summaryDescriptionContainer}>
+            <Text style={styles.summaryDescription}>
+              Our top recommendations based on quality, value, and price
+            </Text>
+          </View>
 
           {/* Highest Rated Summary */}
           {summaryWines.highestRated.length > 0 && (
             <View style={styles.summaryCategory}>
               <View style={styles.summaryCategoryHeader}>
-                <Text style={styles.summaryCategoryTitle}>🏆 Highest Rated</Text>
-                <Text style={styles.summaryCategoryReason}>
-                  Exceptional critic scores for premium quality
-                </Text>
+                <View style={styles.summaryCategoryTitleContainer}>
+                  <Text style={styles.summaryCategoryTitle}>🏆 Highest Rated</Text>
+                </View>
+                <View style={styles.summaryCategoryReasonContainer}>
+                  <Text style={styles.summaryCategoryReason}>
+                    Exceptional critic scores for premium quality
+                  </Text>
+                </View>
               </View>
               {summaryWines.highestRated.map((wine, index) => (
                 <WineCard
@@ -99,10 +111,14 @@ export function ResultsScreen() {
           {summaryWines.bestValue.length > 0 && (
             <View style={styles.summaryCategory}>
               <View style={styles.summaryCategoryHeader}>
-                <Text style={styles.summaryCategoryTitle}>💎 Best Value</Text>
-                <Text style={styles.summaryCategoryReason}>
-                  Great quality at reasonable prices with fair markup
-                </Text>
+                <View style={styles.summaryCategoryTitleContainer}>
+                  <Text style={styles.summaryCategoryTitle}>💎 Best Value</Text>
+                </View>
+                <View style={styles.summaryCategoryReasonContainer}>
+                  <Text style={styles.summaryCategoryReason}>
+                    Great quality at reasonable prices with fair markup
+                  </Text>
+                </View>
               </View>
               {summaryWines.bestValue.map((wine, index) => (
                 <WineCard
@@ -119,10 +135,14 @@ export function ResultsScreen() {
           {summaryWines.mostInexpensive.length > 0 && (
             <View style={styles.summaryCategory}>
               <View style={styles.summaryCategoryHeader}>
-                <Text style={styles.summaryCategoryTitle}>💰 Most Inexpensive</Text>
-                <Text style={styles.summaryCategoryReason}>
-                  Budget-friendly options without compromising too much
-                </Text>
+                <View style={styles.summaryCategoryTitleContainer}>
+                  <Text style={styles.summaryCategoryTitle}>💰 Most Inexpensive</Text>
+                </View>
+                <View style={styles.summaryCategoryReasonContainer}>
+                  <Text style={styles.summaryCategoryReason}>
+                    Budget-friendly options without compromising too much
+                  </Text>
+                </View>
               </View>
               {summaryWines.mostInexpensive.map((wine, index) => (
                 <WineCard
@@ -138,10 +158,14 @@ export function ResultsScreen() {
 
         {/* All Wines Section */}
         <View style={styles.allWinesSection}>
-          <Text style={styles.allWinesTitle}>All Wines</Text>
-          <Text style={styles.allWinesDescription}>
-            Browse all {wines.length} wines by category
-          </Text>
+          <View style={styles.allWinesTitleContainer}>
+            <Text style={styles.allWinesTitle}>All Wines</Text>
+          </View>
+          <View style={styles.allWinesDescriptionContainer}>
+            <Text style={styles.allWinesDescription}>
+              Browse all {wines.length} wines by category
+            </Text>
+          </View>
 
           {/* Category Tabs */}
           <View style={styles.tabs}>
@@ -168,9 +192,11 @@ export function ResultsScreen() {
 
           {/* Category Description */}
           {currentCategory && (
-            <Text style={styles.categoryDescription}>
-              {currentCategory.description}
-            </Text>
+            <View style={styles.categoryDescriptionContainer}>
+              <Text style={styles.categoryDescription}>
+                {currentCategory.description}
+              </Text>
+            </View>
           )}
 
           {/* Wine List */}
@@ -219,30 +245,46 @@ const styles = StyleSheet.create({
   backButtonText: {
     ...theme.typography.styles.body,
     color: theme.colors.primary[600],
+    lineHeight: Platform.OS === 'web' ? 24 : theme.typography.styles.body.lineHeight * 18,
+  },
+  titleContainer: {
+    marginBottom: Platform.OS === 'web' ? 8 : theme.spacing.sm,
+    minHeight: Platform.OS === 'web' ? 60 : undefined,
   },
   title: {
     ...theme.typography.styles.pageTitle,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
+    lineHeight: Platform.OS === 'web' ? 56 : theme.typography.styles.pageTitle.lineHeight * 48,
+  },
+  subtitleContainer: {
+    minHeight: Platform.OS === 'web' ? 24 : undefined,
   },
   subtitle: {
     ...theme.typography.styles.body,
     color: theme.colors.text.secondary,
+    lineHeight: Platform.OS === 'web' ? 24 : theme.typography.styles.body.lineHeight * 18,
   },
   summarySection: {
     marginBottom: theme.spacing['3xl'],
   },
+  summaryTitleContainer: {
+    marginBottom: Platform.OS === 'web' ? 8 : theme.spacing.sm,
+    minHeight: Platform.OS === 'web' ? 40 : undefined,
+  },
   summaryTitle: {
     ...theme.typography.styles.pageTitle,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
     fontSize: Platform.OS === 'web' ? 32 : theme.typography.sizes['2xl'],
+    lineHeight: Platform.OS === 'web' ? 38 : theme.typography.styles.pageTitle.lineHeight * 32,
+  },
+  summaryDescriptionContainer: {
+    marginBottom: theme.spacing.xl,
+    minHeight: Platform.OS === 'web' ? 24 : undefined,
   },
   summaryDescription: {
     ...theme.typography.styles.body,
     color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xl,
-    lineHeight: Platform.OS === 'web' ? 24 : 20,
+    lineHeight: Platform.OS === 'web' ? 24 : theme.typography.styles.body.lineHeight * 18,
   },
   summaryCategory: {
     marginBottom: theme.spacing.xl,
@@ -253,16 +295,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: theme.colors.gold[200],
   },
+  summaryCategoryTitleContainer: {
+    marginBottom: Platform.OS === 'web' ? 4 : theme.spacing.xs,
+    minHeight: Platform.OS === 'web' ? 30 : undefined,
+  },
   summaryCategoryTitle: {
     ...theme.typography.styles.sectionTitle,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
     fontSize: Platform.OS === 'web' ? 24 : theme.typography.sizes.xl,
+    lineHeight: Platform.OS === 'web' ? 28 : theme.typography.styles.sectionTitle.lineHeight * 24,
+  },
+  summaryCategoryReasonContainer: {
+    minHeight: Platform.OS === 'web' ? 20 : undefined,
   },
   summaryCategoryReason: {
     ...theme.typography.styles.bodySmall,
     color: theme.colors.text.secondary,
     fontStyle: 'italic',
+    lineHeight: Platform.OS === 'web' ? 20 : theme.typography.styles.bodySmall.lineHeight * 14,
   },
   allWinesSection: {
     marginTop: theme.spacing['2xl'],
@@ -270,16 +320,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     borderTopColor: theme.colors.divider,
   },
+  allWinesTitleContainer: {
+    marginBottom: Platform.OS === 'web' ? 8 : theme.spacing.sm,
+    minHeight: Platform.OS === 'web' ? 34 : undefined,
+  },
   allWinesTitle: {
     ...theme.typography.styles.sectionTitle,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
     fontSize: Platform.OS === 'web' ? 28 : theme.typography.sizes.xl,
+    lineHeight: Platform.OS === 'web' ? 32 : theme.typography.styles.sectionTitle.lineHeight * 28,
+  },
+  allWinesDescriptionContainer: {
+    marginBottom: theme.spacing.lg,
+    minHeight: Platform.OS === 'web' ? 24 : undefined,
   },
   allWinesDescription: {
     ...theme.typography.styles.body,
     color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.lg,
+    lineHeight: Platform.OS === 'web' ? 24 : theme.typography.styles.body.lineHeight * 18,
   },
   tabs: {
     flexDirection: 'row',
@@ -317,12 +375,16 @@ const styles = StyleSheet.create({
     color: theme.colors.neutral[50],
     fontWeight: '600' as any,
   },
+  categoryDescriptionContainer: {
+    marginBottom: theme.spacing.lg,
+    minHeight: Platform.OS === 'web' ? 20 : undefined,
+    paddingLeft: theme.spacing.sm,
+  },
   categoryDescription: {
     ...theme.typography.styles.bodySmall,
     color: theme.colors.text.tertiary,
-    marginBottom: theme.spacing.lg,
     fontStyle: 'italic',
-    paddingLeft: theme.spacing.sm,
+    lineHeight: Platform.OS === 'web' ? 20 : theme.typography.styles.bodySmall.lineHeight * 14,
   },
   scrollView: {
     flex: 1,

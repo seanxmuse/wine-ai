@@ -24,6 +24,7 @@ import { theme } from './src/theme';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { CameraScreen } from './src/screens/CameraScreen';
 import { ResultsScreen } from './src/screens/ResultsScreen';
+import { NewResultsScreen } from './src/screens/NewResultsScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -137,6 +138,7 @@ export default function App() {
           <>
             <Stack.Screen name="Camera" component={CameraScreen} />
             <Stack.Screen name="Results" component={ResultsScreen} />
+            <Stack.Screen name="NewResults" component={NewResultsScreen} />
           </>
         )}
       </Stack.Navigator>

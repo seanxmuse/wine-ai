@@ -26,45 +26,61 @@ export function WineCard({ wine, rank, category }: WineCardProps) {
           {wine.displayName}
         </Text>
 
-        <View>
+        <View style={styles.detailsContainer}>
           {wine.vintage && (
-            <Text style={styles.vintage}>{wine.vintage}</Text>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailText}>{wine.vintage}</Text>
+            </View>
           )}
-
           {wine.varietal && (
-            <Text style={styles.detail}>{wine.varietal}</Text>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailText}>{wine.varietal}</Text>
+            </View>
           )}
-
           {wine.region && (
-            <Text style={styles.detail}>{wine.region}</Text>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailText}>{wine.region}</Text>
+            </View>
           )}
         </View>
 
         {/* Pricing Section */}
         <View style={styles.pricingSection}>
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Restaurant Price</Text>
-            <Text style={styles.restaurantPrice}>
-              {formatPrice(wine.restaurantPrice)}
-            </Text>
+            <View style={styles.priceLabelContainer}>
+              <Text style={styles.priceLabel}>Restaurant Price</Text>
+            </View>
+            <View style={styles.priceValueContainer}>
+              <Text style={styles.restaurantPrice}>
+                {formatPrice(wine.restaurantPrice)}
+              </Text>
+            </View>
           </View>
 
           {wine.realPrice ? (
             <>
               <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Market Price</Text>
-                <Text style={styles.realPrice}>
-                  {formatPrice(wine.realPrice)}
-                </Text>
+                <View style={styles.priceLabelContainer}>
+                  <Text style={styles.priceLabel}>Market Price</Text>
+                </View>
+                <View style={styles.priceValueContainer}>
+                  <Text style={styles.realPrice}>
+                    {formatPrice(wine.realPrice)}
+                  </Text>
+                </View>
               </View>
 
               {wine.markup !== undefined && (
                 <View style={styles.markupRow}>
-                  <Text style={styles.priceLabel}>Markup</Text>
-                  <View style={[styles.markupBadge, { backgroundColor: markupColor }]}>
-                    <Text style={styles.markupText}>
-                      {formatMarkup(wine.markup)}
-                    </Text>
+                  <View style={styles.priceLabelContainer}>
+                    <Text style={styles.priceLabel}>Markup</Text>
+                  </View>
+                  <View style={styles.markupBadgeContainer}>
+                    <View style={[styles.markupBadge, { backgroundColor: markupColor }]}>
+                      <Text style={styles.markupText}>
+                        {formatMarkup(wine.markup)}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               )}
@@ -83,9 +99,13 @@ export function WineCard({ wine, rank, category }: WineCardProps) {
               <Text style={styles.scoreValue}>{wine.criticScore}</Text>
               <Text style={styles.scoreMax}>/100</Text>
             </View>
-            {wine.critic && (
+            {wine.criticCount ? (
+              <Text style={styles.criticName}>
+                Avg score of {wine.criticScore} across {wine.criticCount} {wine.criticCount === 1 ? 'Critic' : 'Critics and Enthusiasts'}
+              </Text>
+            ) : wine.critic ? (
               <Text style={styles.criticName}>{wine.critic}</Text>
-            )}
+            ) : null}
           </View>
         ) : (
           <View style={styles.noScoreSection}>
@@ -135,96 +155,95 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
   },
   wineName: {
-    fontSize: 20,
-    lineHeight: 1.4,
-    letterSpacing: 0,
+    ...theme.typography.styles.cardTitle,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
-    fontFamily: Platform.OS === 'web'
-      ? 'Georgia, "Times New Roman", serif' as any
-      : theme.typography.fonts.displayLight,
-    ...(Platform.OS === 'web' && {
-      wordWrap: 'break-word' as any,
-      overflowWrap: 'break-word' as any,
-    }),
-  },
-  vintage: {
-    ...theme.typography.styles.body,
-    fontFamily: theme.typography.fonts.bodyMedium,
-    color: theme.colors.text.accent,
     marginBottom: theme.spacing.xs,
-    ...(Platform.OS === 'web' && {
-      fontFamily: 'system-ui, -apple-system, sans-serif' as any,
-    }),
+    lineHeight: Platform.OS === 'web' ? 1.2 : theme.typography.styles.cardTitle.lineHeight,
   },
-  detail: {
+  detailsContainer: {
+    marginBottom: theme.spacing.md,
+  },
+  detailRow: {
+    marginBottom: theme.spacing.sm,
+    minHeight: Platform.OS === 'web' ? 20 : undefined,
+  },
+  detailText: {
     ...theme.typography.styles.bodySmall,
     color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xs,
-    ...(Platform.OS === 'web' && {
-      fontFamily: 'system-ui, -apple-system, sans-serif' as any,
-    }),
+    lineHeight: Platform.OS === 'web' ? 20 : theme.typography.styles.bodySmall.lineHeight * 14,
   },
   pricingSection: {
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
     borderTopWidth: 1,
     borderTopColor: theme.colors.divider,
+    paddingTop: theme.spacing.md,
+    marginTop: theme.spacing.md,
   },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: theme.spacing.sm,
+    minHeight: Platform.OS === 'web' ? 24 : undefined,
+  },
+  priceLabelContainer: {
+    flex: 1,
+    minHeight: Platform.OS === 'web' ? 20 : undefined,
   },
   priceLabel: {
     ...theme.typography.styles.caption,
     color: theme.colors.text.secondary,
     textTransform: 'uppercase',
     fontSize: 11,
-    marginRight: theme.spacing.md,
-    ...(Platform.OS === 'web' && {
-      fontFamily: 'system-ui, -apple-system, sans-serif' as any,
-    }),
+    lineHeight: Platform.OS === 'web' ? 16 : theme.typography.styles.caption.lineHeight * 14,
+  },
+  priceValueContainer: {
+    alignItems: 'flex-end',
+    minHeight: Platform.OS === 'web' ? 24 : undefined,
   },
   restaurantPrice: {
     ...theme.typography.styles.bodyLarge,
     fontFamily: theme.typography.fonts.bodySemibold,
     color: theme.colors.text.primary,
+    lineHeight: Platform.OS === 'web' ? 24 : theme.typography.styles.bodyLarge.lineHeight * 20,
   },
   realPrice: {
     ...theme.typography.styles.body,
     color: theme.colors.text.secondary,
     textDecorationLine: 'line-through',
+    lineHeight: Platform.OS === 'web' ? 22 : theme.typography.styles.body.lineHeight * 18,
   },
   markupRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: theme.spacing.sm,
+    minHeight: Platform.OS === 'web' ? 24 : undefined,
+  },
+  markupBadgeContainer: {
+    minHeight: Platform.OS === 'web' ? 24 : undefined,
   },
   markupBadge: {
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.sm,
   },
   markupText: {
     ...theme.typography.styles.label,
-    color: theme.colors.neutral[50],
+    color: 'white',
     fontSize: 12,
   },
   scoreSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
     borderTopWidth: 1,
     borderTopColor: theme.colors.divider,
+    paddingTop: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   scoreBadge: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginRight: theme.spacing.md,
+    marginRight: theme.spacing.sm,
   },
   scoreValue: {
     ...theme.typography.styles.sectionTitle,
@@ -234,7 +253,7 @@ const styles = StyleSheet.create({
   scoreMax: {
     ...theme.typography.styles.bodySmall,
     color: theme.colors.text.tertiary,
-    marginLeft: theme.spacing.xs,
+    marginLeft: 2,
   },
   criticName: {
     ...theme.typography.styles.caption,
