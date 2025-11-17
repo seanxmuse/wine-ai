@@ -157,8 +157,24 @@ export function CameraScreen() {
   };
 
   const viewSampleData = () => {
-    logger.info('DEBUG', 'Viewing sample data (no API calls)');
-    (navigation as any).navigate('Results', { wines: SAMPLE_WINES });
+    try {
+      console.log('[DEBUG] View Sample Data button clicked');
+      console.log('[DEBUG] Sample wines count:', SAMPLE_WINES.length);
+      logger.info('DEBUG', 'Viewing sample data (no API calls)');
+
+      if (!navigation) {
+        console.error('[DEBUG] Navigation object is null/undefined!');
+        Alert.alert('Error', 'Navigation not available');
+        return;
+      }
+
+      console.log('[DEBUG] Navigating to Results with sample data...');
+      (navigation as any).navigate('Results', { wines: SAMPLE_WINES });
+      console.log('[DEBUG] Navigation call completed');
+    } catch (error) {
+      console.error('[DEBUG] Error in viewSampleData:', error);
+      Alert.alert('Error', `Failed to load sample data: ${error.message}`);
+    }
   };
 
   const processWineList = async (imageUri: string) => {
