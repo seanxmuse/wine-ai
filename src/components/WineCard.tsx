@@ -26,17 +26,19 @@ export function WineCard({ wine, rank, category }: WineCardProps) {
           {wine.displayName}
         </Text>
 
-        {wine.vintage && (
-          <Text style={styles.vintage}>{wine.vintage}</Text>
-        )}
+        <View>
+          {wine.vintage && (
+            <Text style={styles.vintage}>{wine.vintage}</Text>
+          )}
 
-        {wine.varietal && (
-          <Text style={styles.detail}>{wine.varietal}</Text>
-        )}
+          {wine.varietal && (
+            <Text style={styles.detail}>{wine.varietal}</Text>
+          )}
 
-        {wine.region && (
-          <Text style={styles.detail}>{wine.region}</Text>
-        )}
+          {wine.region && (
+            <Text style={styles.detail}>{wine.region}</Text>
+          )}
+        </View>
 
         {/* Pricing Section */}
         <View style={styles.pricingSection}>
@@ -117,6 +119,7 @@ const styles = StyleSheet.create({
   },
   rankBadge: {
     width: 60,
+    minWidth: 60,
     backgroundColor: theme.colors.gold[500],
     justifyContent: 'center',
     alignItems: 'center',
@@ -125,6 +128,7 @@ const styles = StyleSheet.create({
     ...theme.typography.styles.sectionTitle,
     color: theme.colors.neutral[50],
     fontWeight: '800',
+    fontSize: 32,
   },
   content: {
     flex: 1,
@@ -135,7 +139,7 @@ const styles = StyleSheet.create({
     lineHeight: 1.4,
     letterSpacing: 0,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
     fontFamily: Platform.OS === 'web'
       ? 'Georgia, "Times New Roman", serif' as any
       : theme.typography.fonts.displayLight,
@@ -145,9 +149,10 @@ const styles = StyleSheet.create({
     }),
   },
   vintage: {
-    ...theme.typography.styles.bodyMedium,
+    ...theme.typography.styles.body,
+    fontFamily: theme.typography.fonts.bodyMedium,
     color: theme.colors.text.accent,
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
     ...(Platform.OS === 'web' && {
       fontFamily: 'system-ui, -apple-system, sans-serif' as any,
     }),
@@ -177,7 +182,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     textTransform: 'uppercase',
     fontSize: 11,
-    marginBottom: 4,
+    marginRight: theme.spacing.md,
     ...(Platform.OS === 'web' && {
       fontFamily: 'system-ui, -apple-system, sans-serif' as any,
     }),
@@ -190,6 +195,7 @@ const styles = StyleSheet.create({
   realPrice: {
     ...theme.typography.styles.body,
     color: theme.colors.text.secondary,
+    textDecorationLine: 'line-through',
   },
   markupRow: {
     flexDirection: 'row',
