@@ -3,6 +3,155 @@
 ## [Unreleased]
 
 ### Fixed
+- **Demo UI Lab Excluded from Deployment** 🚫
+  - Added `demo-ui/` folder to `.vercelignore` to prevent deployment
+  - Added `App.demo.js` and `App.prod.js` to `.vercelignore`
+  - Demo UI Lab is now completely separate from production deployment
+  - Redeployed to ensure demo-ui is not included in production build
+- **Chat Database Tables Missing** 🗄️
+  - Created `FIX_CHAT_TABLES.md` guide to resolve missing chat tables error
+  - Chat tables migration exists but needs to be run in production Supabase database
+  - Error: `Could not find the table 'public.chat_conversations' in the schema cache`
+  - Solution: Run `supabase/migrations/20250117_add_chat_tables.sql` in Supabase SQL Editor
+- **Chat Wine Labs API Integration** 🍷
+  - Added Wine Labs API integration to chat service
+  - Chat now automatically queries Wine Labs API when users ask about specific wines or prices
+  - Extracts wine names and vintages from user messages using pattern matching
+  - Fetches price stats, critic scores, and wine information from Wine Labs API
+  - Falls back to web search if Wine Labs doesn't have the wine
+  - Users can explicitly request Wine Labs API by saying "use wine labs api" or "use the wine labs api"
+  - System prompt updated to mention both Wine Labs API and web search capabilities
+- **Chat Web Search Integration** 🔍
+  - Fixed chat service to use correct Google Search tool (`googleSearch` instead of `googleSearchRetrieval`)
+  - Updated model from `gemini-2.0-flash-exp` to `gemini-2.5-flash` for better quota availability and consistency
+  - All chat functions now use `gemini-2.5-flash` (chat responses, title generation)
+  - Consistent model usage across all services (chat, webSearch, vision all use `gemini-2.5-flash`)
+  - Chat now properly supports web search when users ask for current information
+  - Users can explicitly request web search in chat prompts (e.g., "Please use web search to find...")
+  - Model automatically triggers web search for queries requiring current data (prices, reviews, etc.)
+  - Created test script (`test-chat-web-search.js`) to verify web search functionality
+  - Deployed fix to production (cleared cache and redeployed to ensure correct model is used)
+- **Critic Scores API Response Mapping** ⭐
+  - Fixed critic scores not displaying despite API returning scores
+  - API returns `review_score` and `critic_title`, but code expected `score` and `critic`
+  - Added proper mapping from API response structure to expected `WineLabsCriticScore` interface
+  - Now correctly extracts and displays critic scores from WineLabs API
+  - Scores are properly averaged and displayed in wine cards
+- **Price Stats Parsing** 💰
+  - Fixed price stats response parsing to extract `median_value` from `results` array
+  - Market prices now display correctly in UI
+  - Markup percentages now calculate properly
+- **Critic Scores Web Search Fallback** ⭐
+  - Added web search fallback when WineLabs API returns 0 critic scores
+  - Automatically searches for critic scores from Wine Spectator, Robert Parker, Wine Enthusiast, Decanter, James Suckling, etc.
+  - Only triggers when WineLabs has no scores (doesn't waste API calls)
+  - Improved logging to show raw API response structure for debugging
+  - Updated both CameraScreen and ChatScreen with fallback logic
+- **Vision AI Wine Name Extraction** 🔍
+  - Improved prompts to require complete wine names including varietal (e.g., "Roco Gravel Road Pinot Noir" instead of just "Roco Gravel Road")
+  - Added explicit examples showing correct vs incorrect extraction
+  - Updated all vision AI providers (Gemini, OpenAI, Anthropic) with consistent prompts
+  - Should significantly improve WineLabs API matching rate by providing complete wine names
+- **WineLabs API Response Parsing & Error Handling** 🔧
+  - Fixed Vercel proxy using wrong API URL (`https://winelabs.ai/api` → `https://external-api.wine-labs.com`)
+  - Improved response parsing to handle both `{results: [...]}` and `[...]` response formats
+  - Added proper handling for empty result arrays (no matches)
+  - Fixed result count mismatch issues by padding results when API returns fewer than expected
+  - Added comprehensive error logging with full error messages and response details
+  - Enhanced all API functions (matchWinesToLwin, getPriceStats, getCriticScores, getWineInfo) with better error handling
+  - Added detailed console logging to track API calls and responses for debugging
+  - Graceful degradation: critic scores and wine info return empty/null instead of throwing errors
+- **All Issues from Testing Plan** ✅
+  - **Duplicate Image Picker Modal**: Removed duplicate modal rendering in ChatScreen
+  - **Conversation Image URL Not Saved**: Implemented image upload to Supabase Storage and conversation update after wine list analysis
+  - **Wine List Analysis Messages Not Saved**: Messages now persist to database (user and assistant messages saved)
+  - **No User-Facing Error Messages**: Added Alert dialogs for all error scenarios with user-friendly messages
+  - **Missing Loading States**: Added loading indicators for conversation deletion with per-conversation state tracking
+  - Added `updateChatConversation` function to chat service
+  - Added `uploadImageToStorage` helper function with graceful error handling
+  - Improved error handling throughout chat flow (network errors, API errors, permission errors)
+  - Conversation image URL now persists after analysis
+  - All analysis messages saved to database for conversation history
+
+### Added
+- **Comprehensive Testing Plan** 📋
+  - Created `TESTING_PLAN.md` with 200+ test cases covering:
+    - Authentication & Authorization (RLS policies)
+    - Conversation Management (CRUD operations)
+    - Message Sending & Receiving
+    - Image Analysis & Wine List Processing
+    - Gemini API Integration
+    - UI/UX & Navigation
+    - Error Handling (Network, Database, API)
+    - Performance & Security
+    - End-to-End Integration Tests
+  - Documented 5 known issues found during code review
+  - Includes test execution checklist and coverage goals
+
+### Added
+- **Web Search Fallback for Unmatched Wines** 🔍
+  - Integrated Gemini 2.0 Flash with Google Search grounding
+  - Automatically searches web when Wine Labs API doesn't find a match
+  - Extracts wine name, vintage, varietal, region, and estimated market price
+  - Displays "Web" badge on wine cards sourced from web search
+  - Shows estimated market price with source attribution
+  - Confidence-based filtering (only uses results with >30% confidence)
+  - Significantly improves match rate for obscure or regional wines
+- Wine bottle and magnifying glass favicon/logo
+  - Added logo image to login/signup screen above title
+  - Configured favicon for web builds
+  - 100px logo on web, 80px on mobile
+- Camera capture option in chat (in addition to image library picker)
+- Animated wine icon pulse effect during wine list analysis
+- Animated processing dots with staggered pulse animation
+- Animated thinking dots with bounce effect during regular chat loading
+- Image picker modal with options for camera or library selection
+
+### Changed
+- Improved login screen typography
+  - Tightened letter spacing to prevent text overlap
+  - Reduced line height for cleaner title display
+  - Removed "Powered by Wine Labs AI" footer text
+- Enhanced wine matching pipeline
+  - Web search fallback automatically triggered for unmatched wines
+  - Markup calculation now uses web search price if Wine Labs price unavailable
+  - Wine cards display data source (Wine Labs vs. Web Search)
+- Updated Wine data types to track data source and confidence scores
+
+### Deployed
+- ✅ **Latest**: https://wine-scanner-c7o05wq8l-seanxmuses-projects.vercel.app (Nov 18, 2025)
+  - **New**: Web search fallback with Gemini for unmatched wines
+  - Includes favicon/logo implementation
+  - Fixed login screen text overlap issues
+  - Enhanced wine matching with automatic fallback
+- Previous: https://wine-scanner-jmnl78nbg-seanxmuses-projects.vercel.app
+
+### Added
+- Chat feature for wine discussions
+  - Chat button on each wine card to start conversations about specific wines
+  - Chat interface with AI-powered responses using Gemini API
+  - Chat history screen to view and manage past conversations
+  - Bottom tab bar navigation to switch between Camera and Chat views
+  - Image references in chats (wine list images shown in chat context)
+  - Database schema for chat conversations and messages
+  - Chat service for managing conversations and AI interactions
+  - "Create Chat" button in Chat History screen header
+  - Image upload and analysis directly in chat interface (Gemini-style)
+  - Wine list analysis through chat with processing animations
+  - Results displayed in chat format when analyzing wine lists via chat
+  - Chat history icon in top left of camera screen
+
+### Changed
+- Camera-to-chat flow now starts a new chat instead of navigating to chat history
+- Chat tab in bottom navigation creates new conversations
+- Chat screen supports general conversations (not wine-specific) and wine-specific conversations
+- Chat interface allows uploading wine list images for analysis
+- Processing animations shown in chat when analyzing wine lists
+
+### Removed
+- Debug buttons ("View Sample Data" and "View New Sample Page") removed from camera screen
+
+### Fixed
 - Fixed WineCard layout issues in ResultsScreen
   - Removed incorrect `marginBottom` from `priceLabel` style (was causing layout issues in row layout)
   - Fixed typography error: changed `bodyMedium` style reference to use `body` style with `bodyMedium` font family

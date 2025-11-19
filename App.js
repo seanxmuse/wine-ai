@@ -25,7 +25,11 @@ import { AuthScreen } from './src/screens/AuthScreen';
 import { CameraScreen } from './src/screens/CameraScreen';
 import { ResultsScreen } from './src/screens/ResultsScreen';
 import { NewResultsScreen } from './src/screens/NewResultsScreen';
+import { ChatScreen } from './src/screens/ChatScreen';
+import { ChatHistoryScreen } from './src/screens/ChatHistoryScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
+import { ActiveConversationProvider } from './src/contexts/ActiveConversationContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Stack = createNativeStackNavigator();
@@ -114,9 +118,10 @@ export default function App() {
   }
 
   const AppContent = () => (
-    <NavigationContainer>
-      <StatusBar style="dark" />
-      <Stack.Navigator
+    <ActiveConversationProvider>
+      <NavigationContainer>
+        <StatusBar style="dark" />
+        <Stack.Navigator
         screenOptions={{
           headerShown: false,
           animation: Platform.OS === 'web' ? 'none' : 'default',
@@ -139,10 +144,14 @@ export default function App() {
             <Stack.Screen name="Camera" component={CameraScreen} />
             <Stack.Screen name="Results" component={ResultsScreen} />
             <Stack.Screen name="NewResults" component={NewResultsScreen} />
+            <Stack.Screen name="Chat" component={ChatScreen} />
+            <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
           </>
         )}
       </Stack.Navigator>
-    </NavigationContainer>
+      </NavigationContainer>
+    </ActiveConversationProvider>
   );
 
   return (

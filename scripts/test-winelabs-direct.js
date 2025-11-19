@@ -10,7 +10,7 @@ async function testDirect() {
   console.log('Testing Wine Labs API directly...\n');
 
   try {
-    const response = await fetch('https://winelabs.ai/api/match_to_lwin_batch', {
+    const response = await fetch('https://external-api.wine-labs.com/match_to_lwin_batch', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

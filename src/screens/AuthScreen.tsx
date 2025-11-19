@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
@@ -222,6 +223,11 @@ export function AuthScreen() {
       <View style={styles.content}>
         {/* Logo/Title */}
         <View style={styles.header}>
+          <Image
+            source={require('../../public/favicon.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.title}>Wine Scanner</Text>
           <Text style={styles.subtitle}>
             Discover the best wines on any list
@@ -337,10 +343,6 @@ export function AuthScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Footer */}
-        <Text style={styles.footer}>
-          Powered by Wine Labs AI
-        </Text>
       </View>
     </Container>
   );
@@ -372,14 +374,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing['3xl'],
   },
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: theme.spacing.lg,
+    ...(Platform.OS === 'web' && {
+      width: '100px' as any,
+      height: '100px' as any,
+    }),
+  },
   title: {
     ...theme.typography.styles.heroTitle,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.lg,
     textAlign: 'center',
+    letterSpacing: -0.5,
     ...(Platform.OS === 'web' && {
-      lineHeight: '1.2' as any,
-      marginBottom: '24px' as any,
+      lineHeight: '1.1' as any,
+      marginBottom: '16px' as any,
+      letterSpacing: '-1px' as any,
     }),
   },
   subtitle: {
@@ -497,11 +510,5 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' && {
       transition: 'color 0.2s ease' as any,
     }),
-  },
-  footer: {
-    ...theme.typography.styles.caption,
-    color: theme.colors.text.tertiary,
-    textAlign: 'center',
-    marginTop: theme.spacing['3xl'],
   },
 });

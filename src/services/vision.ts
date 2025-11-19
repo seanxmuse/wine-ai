@@ -51,15 +51,25 @@ async function parseWithGemini(imageUri: string): Promise<WineListItem[]> {
                 {
                   text: `Extract all wines from this wine list. Return ONLY a JSON array, no markdown.
 
-Rules:
-- Full producer name (e.g., "Château Margaux" not "Ch. Margaux")
+MANDATORY RULE - VARIETAL MUST BE INCLUDED:
+- Look at the menu carefully. If you see a varietal listed (Pinot Noir, Cabernet Sauvignon, Chardonnay, etc.), it MUST be part of the wineName
+- Even if the varietal appears on a separate line or column, combine it with the wine name
+- wineName format: "Producer WineName Varietal" when varietal is visible
+  ✅ CORRECT: "Roco Gravel Road Pinot Noir" (varietal included)
+  ✅ CORRECT: "La Crema Pinot Noir" (varietal included)  
+  ✅ CORRECT: "Elouan Pinot Noir" (varietal included)
+  ❌ WRONG: "Roco Gravel Road" (missing varietal - REJECT THIS)
+  ❌ WRONG: "Elouan" (missing varietal - REJECT THIS)
+- Only Bordeaux/European wines may omit varietal (they don't list it)
 - Include vintage if visible (e.g., "2015")
-- Price as number only (e.g., 450 not "$450")
-- Each wine: {"wineName": "Full Name", "vintage": "2015", "price": 450}
-- Skip wines with unclear prices
-- Only 80%+ confidence items
+- Price as number only (e.g., 64 not "$64")
+- Each wine: {"wineName": "Full Name Including Varietal", "vintage": "2022", "price": 64}
+- DO NOT return wines with incomplete names missing visible varietals
 
-Example: [{"wineName": "Château Margaux", "vintage": "2015", "price": 450}]`,
+REQUIRED EXAMPLES FORMAT:
+[{"wineName": "Roco Gravel Road Pinot Noir", "vintage": "2022", "price": 64}]
+[{"wineName": "La Crema Pinot Noir", "vintage": null, "price": 60}]
+[{"wineName": "Elouan Pinot Noir", "vintage": null, "price": 48}]`,
                 },
                 {
                   inlineData: {
@@ -101,15 +111,42 @@ Example: [{"wineName": "Château Margaux", "vintage": "2015", "price": 450}]`,
     const wines = JSON.parse(cleanedContent);
     console.log('[VISION] Parsed wines:', wines);
 
-    const result = wines.map((wine: any) => ({
-      rawText: `${wine.wineName} ${wine.vintage || ''} $${wine.price}`.trim(),
-      wineName: wine.wineName,
-      vintage: wine.vintage,
-      price: parseFloat(wine.price),
-      confidence: 0.9,
-    }));
-    console.log('[VISION] Final result:', result);
-    return result;
+    // Common varietals that should be included if visible on menu
+    const commonVarietals = [
+      'Pinot Noir', 'Cabernet Sauvignon', 'Chardonnay', 'Sauvignon Blanc',
+      'Merlot', 'Riesling', 'Syrah', 'Shiraz', 'Pinot Grigio', 'Pinot Gris',
+      'Malbec', 'Zinfandel', 'Sangiovese', 'Tempranillo', 'Gewürztraminer',
+      'Viognier', 'Grenache', 'Mourvèdre', 'Nebbiolo', 'Barbera'
+    ];
+
+    // Validate and warn about incomplete wine names
+    const validatedWines = wines.map((wine: any) => {
+      const wineName = wine.wineName || '';
+      const hasVarietal = commonVarietals.some(varietal => 
+        wineName.toLowerCase().includes(varietal.toLowerCase())
+      );
+      
+      // Check if name looks incomplete (short names without varietal)
+      const isShortName = wineName.split(' ').length <= 2;
+      const isLikelyIncomplete = isShortName && !hasVarietal && 
+        !wineName.toLowerCase().includes('château') &&
+        !wineName.toLowerCase().includes('domaine');
+      
+      if (isLikelyIncomplete) {
+        console.warn(`[VISION] ⚠️ Potentially incomplete wine name: "${wineName}" - may be missing varietal`);
+      }
+      
+      return {
+        rawText: `${wineName} ${wine.vintage || ''} $${wine.price}`.trim(),
+        wineName: wineName,
+        vintage: wine.vintage,
+        price: parseFloat(wine.price),
+        confidence: isLikelyIncomplete ? 0.7 : 0.9, // Lower confidence for incomplete names
+      };
+    });
+
+    console.log('[VISION] Final result:', validatedWines);
+    return validatedWines;
   } catch (error) {
     console.error('[VISION] Error parsing with Gemini:', error);
     throw error;
@@ -135,18 +172,27 @@ async function parseWithOpenAI(imageUri: string): Promise<WineListItem[]> {
             content: [
               {
                 type: 'text',
-                text: `You are a wine list parser. Extract all wines from this wine list image and return them as a JSON array. For each wine, extract:
-- wineName (full wine name including producer)
+                text: `You are a wine list parser. Extract all wines from this wine list image and return them as a JSON array.
+
+CRITICAL: wineName MUST include the complete wine name including varietal when visible:
+- ✅ "Roco Gravel Road Pinot Noir" (varietal included)
+- ✅ "La Crema Pinot Noir" (varietal included)
+- ❌ "Roco Gravel Road" (missing varietal - INCOMPLETE)
+- ❌ "La Crema" (missing varietal - INCOMPLETE)
+
+For each wine, extract:
+- wineName (complete name: producer + wine name + varietal when visible)
 - vintage (year, if visible)
 - price (numeric value only)
 
 Return ONLY a valid JSON array with no additional text. Example format:
 [
-  {"wineName": "Château Margaux", "vintage": "2015", "price": 450},
-  {"wineName": "Domaine de la Romanée-Conti", "vintage": "2018", "price": 1200}
+  {"wineName": "Roco Gravel Road Pinot Noir", "vintage": "2022", "price": 64},
+  {"wineName": "La Crema Pinot Noir", "vintage": null, "price": 60},
+  {"wineName": "Château Margaux", "vintage": "2015", "price": 450}
 ]
 
-If you cannot clearly read a wine's information, skip it. Only include wines you can confidently parse.`,
+If varietal is shown on the menu, it MUST be included in wineName. Skip wines with unclear prices or incomplete names.`,
               },
               {
                 type: 'image_url',
@@ -212,18 +258,27 @@ async function parseWithAnthropic(imageUri: string): Promise<WineListItem[]> {
               },
               {
                 type: 'text',
-                text: `You are a wine list parser. Extract all wines from this wine list image and return them as a JSON array. For each wine, extract:
-- wineName (full wine name including producer)
+                text: `You are a wine list parser. Extract all wines from this wine list image and return them as a JSON array.
+
+CRITICAL: wineName MUST include the complete wine name including varietal when visible:
+- ✅ "Roco Gravel Road Pinot Noir" (varietal included)
+- ✅ "La Crema Pinot Noir" (varietal included)
+- ❌ "Roco Gravel Road" (missing varietal - INCOMPLETE)
+- ❌ "La Crema" (missing varietal - INCOMPLETE)
+
+For each wine, extract:
+- wineName (complete name: producer + wine name + varietal when visible)
 - vintage (year, if visible)
 - price (numeric value only)
 
 Return ONLY a valid JSON array with no additional text. Example format:
 [
-  {"wineName": "Château Margaux", "vintage": "2015", "price": 450},
-  {"wineName": "Domaine de la Romanée-Conti", "vintage": "2018", "price": 1200}
+  {"wineName": "Roco Gravel Road Pinot Noir", "vintage": "2022", "price": 64},
+  {"wineName": "La Crema Pinot Noir", "vintage": null, "price": 60},
+  {"wineName": "Château Margaux", "vintage": "2015", "price": 450}
 ]
 
-If you cannot clearly read a wine's information, skip it. Only include wines you can confidently parse.`,
+If varietal is shown on the menu, it MUST be included in wineName. Skip wines with unclear prices or incomplete names.`,
               },
             ],
           },

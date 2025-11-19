@@ -91,7 +91,10 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 EXPO_PUBLIC_WINELABS_API_KEY=d71dd0cb-2f37-4db5-8f7a-6937720852da
 EXPO_PUBLIC_WINELABS_USER_ID=your-uuid-here
 
-# Vision API (choose one)
+# Gemini API (for vision, chat, and web search fallback)
+EXPO_PUBLIC_GEMINI_API_KEY=your-gemini-api-key
+
+# Vision API (optional - Gemini is default, but you can use these instead)
 EXPO_PUBLIC_OPENAI_API_KEY=sk-your-openai-key
 # OR
 EXPO_PUBLIC_ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
@@ -116,7 +119,25 @@ Visit [uuidgenerator.net](https://www.uuidgenerator.net/version4)
 
 Copy the UUID and paste it into `EXPO_PUBLIC_WINELABS_USER_ID`.
 
-### 2.3 Get Vision API Key
+### 2.3 Get Gemini API Key (Recommended)
+
+Gemini is used for vision parsing, chat, and web search fallback.
+
+1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+2. Sign in with your Google account
+3. Click "Create API Key"
+4. Select your GCP project (or create a new one)
+5. Copy the API key
+6. Paste into `EXPO_PUBLIC_GEMINI_API_KEY`
+
+**Important:** Make sure Google Search grounding is enabled:
+- The web search fallback feature uses Gemini 2.0 Flash with Google Search grounding
+- This is automatically available with the API key (no additional setup needed)
+- The feature provides better wine matching when Wine Labs API has no results
+
+### 2.4 Alternative Vision API Keys (Optional)
+
+If you prefer OpenAI or Anthropic for vision parsing instead of Gemini:
 
 **For OpenAI:**
 1. Go to [platform.openai.com](https://platform.openai.com)
@@ -125,7 +146,7 @@ Copy the UUID and paste it into `EXPO_PUBLIC_WINELABS_USER_ID`.
 4. Click "Create new secret key"
 5. Copy key and paste into `EXPO_PUBLIC_OPENAI_API_KEY`
 
-**For Anthropic (alternative):**
+**For Anthropic:**
 1. Go to [console.anthropic.com](https://console.anthropic.com)
 2. Sign in or create account
 3. Go to **API Keys**

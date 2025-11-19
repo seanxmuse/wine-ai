@@ -16,6 +16,11 @@ export interface Wine {
   region?: string;
   color?: string;
   drinkingWindow?: string;
+  // Web search fallback fields
+  dataSource?: 'wine-labs' | 'web-search' | 'mixed';
+  searchConfidence?: number; // Confidence score from web search (0-100)
+  webSearchPrice?: number; // Average price from web search
+  webSearchSource?: string; // Source of web search price data
 }
 
 export interface WineListItem {
@@ -41,6 +46,14 @@ export interface WineLabsMatchResponse {
   display_name?: string;
   confidence?: number; // Our calculated confidence based on match quality
   matched: boolean;     // Whether we got a match from Wine Labs
+  // Web search fallback fields
+  dataSource?: 'wine-labs' | 'web-search';
+  webSearchPrice?: number;
+  webSearchSource?: string;
+  varietal?: string;
+  region?: string;
+  vintage?: string;
+  originalQuery?: string;
 }
 
 export interface WineLabsPriceStats {
@@ -80,3 +93,23 @@ export interface RankingResults {
 }
 
 export type RankingCategory = 'highestRated' | 'bestValue' | 'mostInexpensive';
+
+export interface ChatConversation {
+  id: string;
+  userId: string;
+  wineId?: string;
+  scanId?: string;
+  imageUrl?: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  imageUrl?: string;
+  createdAt: string;
+}

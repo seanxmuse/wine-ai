@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const WINELABS_API_BASE = 'https://winelabs.ai/api';
+const WINELABS_API_BASE = 'https://external-api.wine-labs.com';
 const API_KEY = process.env.EXPO_PUBLIC_WINELABS_API_KEY || '';
 const USER_ID = process.env.EXPO_PUBLIC_WINELABS_USER_ID || '';
 
@@ -52,6 +52,9 @@ export default async function handler(
       headers['X-API-Key'] = API_KEY;
     }
 
+    console.log(`[Vercel Proxy] Calling Wine Labs API: ${WINELABS_API_BASE}/${endpoint}`);
+    console.log(`[Vercel Proxy] Request body:`, JSON.stringify(requestBody).substring(0, 500));
+
     const response = await fetch(`${WINELABS_API_BASE}/${endpoint}`, {
       method: 'POST',
       headers,
@@ -60,6 +63,7 @@ export default async function handler(
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`[Vercel Proxy] Wine Labs error ${response.status}:`, errorText);
       return res.status(response.status).json({
         error: `Wine Labs API error: ${response.statusText}`,
         details: errorText,
@@ -67,6 +71,7 @@ export default async function handler(
     }
 
     const data = await response.json();
+    console.log(`[Vercel Proxy] Wine Labs success: ${endpoint}, response length:`, JSON.stringify(data).length);
     return res.status(200).json(data);
   } catch (error: any) {
     console.error('Wine Labs proxy error:', error);

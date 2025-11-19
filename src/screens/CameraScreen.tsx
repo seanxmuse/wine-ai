@@ -22,16 +22,21 @@ import { calculateMarkup } from '../utils/wineRanking';
 import { supabase } from '../services/supabase';
 import { logger } from '../utils/logger';
 import { SAMPLE_WINES } from '../utils/sampleData';
+import { useActiveConversation } from '../contexts/ActiveConversationContext';
+import { createGeneralChatConversation, addAssistantMessage, generateChatTitle } from '../services/chat';
+import { formatWinesAsMarkdown } from '../utils/wineFormatting';
 
 type ProcessingStep = 'idle' | 'uploading' | 'parsing' | 'matching' | 'fetching' | 'complete';
 
 export function CameraScreen() {
+  const navigation = useNavigation();
+  const { activeConversationId } = useActiveConversation();
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'camera' | 'chat'>('camera');
   const [processingStep, setProcessingStep] = useState<ProcessingStep>('idle');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
-  const navigation = useNavigation();
   const buttonScale = useRef(new Animated.Value(1)).current;
 
   if (!permission) {
@@ -156,26 +161,6 @@ export function CameraScreen() {
     setPreviewImage(null);
   };
 
-  const viewSampleData = () => {
-    try {
-      console.log('[DEBUG] View Sample Data button clicked');
-      console.log('[DEBUG] Sample wines count:', SAMPLE_WINES.length);
-      logger.info('DEBUG', 'Viewing sample data (no API calls)');
-
-      if (!navigation) {
-        console.error('[DEBUG] Navigation object is null/undefined!');
-        Alert.alert('Error', 'Navigation not available');
-        return;
-      }
-
-      console.log('[DEBUG] Navigating to Results with sample data...');
-      (navigation as any).navigate('Results', { wines: SAMPLE_WINES });
-      console.log('[DEBUG] Navigation call completed');
-    } catch (error) {
-      console.error('[DEBUG] Error in viewSampleData:', error);
-      Alert.alert('Error', `Failed to load sample data: ${error.message}`);
-    }
-  };
 
   const processWineList = async (imageUri: string) => {
     try {
@@ -245,6 +230,9 @@ export function CameraScreen() {
         parsedWines.map(async (parsed, index) => {
           const match = matches[index];
           const lwin = match?.lwin;
+          
+          // Build display name early so we can use it in fallback logic
+          const displayName = match?.display_name || parsed.wineName || 'Unknown Wine';
 
           let realPrice: number | undefined;
           let markup: number | undefined;
@@ -277,26 +265,101 @@ export function CameraScreen() {
                   s.score > max.score ? s : max
                 );
                 critic = topScore.critic;
+              } else {
+                // Fallback to web search if WineLabs has no scores
+                console.log(`[WineLabs] No critic scores from WineLabs, trying web search for: ${displayName}`);
+                const { searchCriticScoresOnWeb } = await import('../services/webSearch');
+                const webScores = await searchCriticScoresOnWeb(displayName, parsed.vintage);
+                if (webScores.length > 0) {
+                  // Calculate average score from web search
+                  const totalScore = webScores.reduce((sum, s) => sum + s.score, 0);
+                  criticScore = Math.round((totalScore / webScores.length) * 100) / 100;
+                  criticCount = webScores.length;
+                  const topScore = webScores.reduce((max, s) =>
+                    s.score > max.score ? s : max
+                  );
+                  critic = topScore.critic;
+                  console.log(`[WebSearch] Found ${webScores.length} critic scores via web search`);
+                }
               }
             } catch (e) {
               console.error('Error fetching critic scores:', e);
+              // Try web search fallback even on error
+              try {
+                console.log(`[WineLabs] Error getting scores, trying web search fallback for: ${displayName}`);
+                const { searchCriticScoresOnWeb } = await import('../services/webSearch');
+                const webScores = await searchCriticScoresOnWeb(displayName, parsed.vintage);
+                if (webScores.length > 0) {
+                  const totalScore = webScores.reduce((sum, s) => sum + s.score, 0);
+                  criticScore = Math.round((totalScore / webScores.length) * 100) / 100;
+                  criticCount = webScores.length;
+                  const topScore = webScores.reduce((max, s) =>
+                    s.score > max.score ? s : max
+                  );
+                  critic = topScore.critic;
+                  console.log(`[WebSearch] Found ${webScores.length} critic scores via web search fallback`);
+                }
+              } catch (webError) {
+                console.error('Error fetching critic scores from web search:', webError);
+              }
+            }
+          } else {
+            // No lwin - try web search for critic scores if wine was matched via web search
+            if (match?.dataSource === 'web-search' || !match?.matched) {
+              try {
+                console.log(`[WineLabs] No lwin, trying web search for critic scores: ${displayName}`);
+                const { searchCriticScoresOnWeb } = await import('../services/webSearch');
+                const webScores = await searchCriticScoresOnWeb(displayName, parsed.vintage);
+                if (webScores.length > 0) {
+                  const totalScore = webScores.reduce((sum, s) => sum + s.score, 0);
+                  criticScore = Math.round((totalScore / webScores.length) * 100) / 100;
+                  criticCount = webScores.length;
+                  const topScore = webScores.reduce((max, s) =>
+                    s.score > max.score ? s : max
+                  );
+                  critic = topScore.critic;
+                  console.log(`[WebSearch] Found ${webScores.length} critic scores for wine without lwin`);
+                }
+              } catch (webError) {
+                console.error('Error fetching critic scores from web search (no lwin):', webError);
+              }
             }
           }
 
-          // Build wine object with fallback for missing display name
-          const displayName = match?.display_name || parsed.wineName || 'Unknown Wine';
+          // Calculate markup using webSearchPrice if realPrice not available
+          const priceForMarkup = realPrice || match?.webSearchPrice;
+          if (priceForMarkup && !markup) {
+            markup = calculateMarkup(parsed.price, priceForMarkup);
+          }
+
+          // Log critic score details before building wine object
+          if (criticScore) {
+            console.log(`[WINE] ${displayName} - Critic score set:`, {
+              criticScore,
+              critic,
+              criticCount,
+            });
+          } else {
+            console.log(`[WINE] ${displayName} - No critic score available`);
+          }
 
           const wine: Wine = {
             lwin7: match?.lwin7,
             lwin: match?.lwin,
             displayName,
-            vintage: parsed.vintage,
+            vintage: match?.vintage || parsed.vintage,
             restaurantPrice: parsed.price,
             realPrice,
             markup,
             criticScore,
             critic,
             criticCount,
+            varietal: match?.varietal,
+            region: match?.region,
+            dataSource: match?.dataSource,
+            searchConfidence: match?.confidence,
+            webSearchPrice: match?.webSearchPrice,
+            webSearchSource: match?.webSearchSource,
           };
 
           // Log wine data for debugging
@@ -304,6 +367,8 @@ export function CameraScreen() {
             hasLwin: !!lwin,
             hasPrice: !!realPrice,
             hasScore: !!criticScore,
+            criticScore: criticScore,
+            criticCount: criticCount,
             markup: markup ? `${markup.toFixed(0)}%` : 'N/A'
           });
 
@@ -312,6 +377,7 @@ export function CameraScreen() {
       );
 
       // Step 5: Save scan to database (only if image was uploaded)
+      let savedScanId: string | undefined;
       const { data: session } = await supabase.auth.getSession();
       if (session?.session?.user && imageUrl) {
         const { data: scan, error: scanError } = await supabase
@@ -324,6 +390,7 @@ export function CameraScreen() {
           .single();
 
         if (scan && !scanError) {
+          savedScanId = scan.id;
           // Save wine results
           await supabase.from('wine_results').insert(
             wines.map(wine => ({
@@ -337,15 +404,65 @@ export function CameraScreen() {
               markup: wine.markup,
               critic_score: wine.criticScore,
               critic_name: wine.critic,
+              critic_count: wine.criticCount,
             }))
           );
         }
       }
 
-      // Navigate to results
+      // Create or add to chat conversation
       setProcessingStep('complete');
       setPreviewImage(null);
-      (navigation as any).navigate('Results', { wines });
+      
+      try {
+        let conversationId: string;
+        
+        if (activeConversationId) {
+          // Add to existing conversation
+          conversationId = activeConversationId;
+          const markdownContent = formatWinesAsMarkdown(wines);
+          const assistantContent = `${markdownContent}\n\nWould you like me to help you find the best value or highest rated wines?`;
+          
+          const assistantMessage = await addAssistantMessage(conversationId, assistantContent, { wines, imageUrl });
+          
+          // Navigate to chat with wines data
+          (navigation as any).navigate('Chat', { 
+            conversationId,
+            winesData: { [assistantMessage.id]: wines },
+          });
+        } else {
+          // Create new conversation
+          const newConversation = await createGeneralChatConversation(imageUrl);
+          conversationId = newConversation.id;
+          
+          const markdownContent = formatWinesAsMarkdown(wines);
+          const assistantContent = `${markdownContent}\n\nWould you like me to help you find the best value or highest rated wines?`;
+          
+          const assistantMessage = await addAssistantMessage(conversationId, assistantContent, { wines, imageUrl });
+          
+          // Generate title
+          try {
+            await generateChatTitle(conversationId, undefined, wines);
+          } catch (titleError) {
+            console.error('Error generating chat title:', titleError);
+          }
+          
+          // Navigate to chat with wines data
+          (navigation as any).navigate('Chat', { 
+            conversationId,
+            winesData: { [assistantMessage.id]: wines },
+          });
+        }
+      } catch (chatError) {
+        console.error('Error creating/updating chat:', chatError);
+        // Fallback to ResultsScreen if chat creation fails
+        (navigation as any).navigate('Results', { 
+          wines,
+          imageUrl,
+          scanId: savedScanId,
+        });
+      }
+      
       setIsProcessing(false);
       setProcessingStep('idle');
     } catch (error) {
@@ -448,7 +565,7 @@ export function CameraScreen() {
               <Ionicons name="close" size={24} color={theme.colors.neutral[50]} />
             </TouchableOpacity>
             <Text style={styles.previewTitle}>Preview Wine List</Text>
-            <View style={styles.placeholder} />
+            <View style={styles.placeholderButton} />
           </View>
           
           <View style={styles.previewImageContainer}>
@@ -505,32 +622,28 @@ export function CameraScreen() {
         facing="back"
       >
         <View style={styles.overlay}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Scan Wine List</Text>
-            <Text style={styles.subtitle}>
-              Position wine list within frame
-            </Text>
-
-            {/* Debug Mode Button */}
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
             <TouchableOpacity
-              style={styles.debugButton}
-              onPress={viewSampleData}
-              activeOpacity={0.7}
+              style={styles.chatHistoryButton}
+              onPress={() => (navigation as any).navigate('ChatHistory')}
             >
-              <Ionicons name="flask-outline" size={16} color={theme.colors.gold[700]} />
-              <Text style={styles.debugButtonText}>View Sample Data</Text>
+              <Ionicons name="chatbubbles-outline" size={24} color={theme.colors.neutral[50]} />
             </TouchableOpacity>
-
-            {/* New Debug Button */}
+            <View style={styles.headerText}>
+              <Text style={styles.title}>Scan Wine List</Text>
+              <Text style={styles.subtitle}>
+                Position wine list within frame
+              </Text>
+            </View>
             <TouchableOpacity
-              style={[styles.debugButton, { marginTop: theme.spacing.sm, backgroundColor: theme.colors.accent[100] }]}
-              onPress={() => (navigation as any).navigate('NewResults')}
-              activeOpacity={0.7}
+              style={styles.settingsButton}
+              onPress={() => (navigation as any).navigate('Settings')}
             >
-              <Ionicons name="bug-outline" size={16} color={theme.colors.accent[700]} />
-              <Text style={[styles.debugButtonText, { color: theme.colors.accent[700] }]}>View New Sample Page</Text>
+              <Ionicons name="settings-outline" size={24} color={theme.colors.neutral[50]} />
             </TouchableOpacity>
           </View>
+        </View>
 
           <View style={styles.frameContainer}>
             <View style={styles.frame} />
@@ -566,7 +679,7 @@ export function CameraScreen() {
               )}
             </TouchableOpacity>
 
-            <View style={styles.placeholder} />
+            <View style={styles.placeholderButton} />
           </View>
         </View>
       </CameraView>
@@ -591,6 +704,49 @@ export function CameraScreen() {
           </View>
         </View>
       )}
+
+      {/* Bottom Tab Bar */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'camera' && styles.tabActive]}
+          onPress={() => setActiveTab('camera')}
+        >
+          <Ionicons
+            name={activeTab === 'camera' ? 'camera' : 'camera-outline'}
+            size={24}
+            color={activeTab === 'camera' ? theme.colors.primary[600] : theme.colors.text.secondary}
+          />
+          <Text
+            style={[
+              styles.tabLabel,
+              activeTab === 'camera' && styles.tabLabelActive,
+            ]}
+          >
+            Camera
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'chat' && styles.tabActive]}
+          onPress={() => {
+            setActiveTab('chat');
+            (navigation as any).navigate('Chat', {});
+          }}
+        >
+          <Ionicons
+            name={activeTab === 'chat' ? 'chatbubbles' : 'chatbubbles-outline'}
+            size={24}
+            color={activeTab === 'chat' ? theme.colors.primary[600] : theme.colors.text.secondary}
+          />
+          <Text
+            style={[
+              styles.tabLabel,
+              activeTab === 'chat' && styles.tabLabelActive,
+            ]}
+          >
+            Chat
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -649,33 +805,58 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: Platform.OS === 'web' ? 40 : 60,
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.xl,
-    alignItems: 'center',
+    paddingBottom: theme.spacing.lg,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     zIndex: 100,
     ...(Platform.OS === 'web' && {
       pointerEvents: 'auto' as any,
     }),
   },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  settingsButton: {
+    padding: theme.spacing.xs,
+  },
+  chatHistoryButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...(Platform.OS === 'web' && {
+      backdropFilter: 'blur(10px)' as any,
+      WebkitBackdropFilter: 'blur(10px)' as any,
+    }),
+  },
+  headerText: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.md,
+  },
+  chatIconButton: {
+    padding: theme.spacing.xs,
+    marginLeft: theme.spacing.md,
+  },
   title: {
     ...theme.typography.styles.sectionTitle,
     color: theme.colors.neutral[50],
-    marginBottom: Platform.OS === 'web' ? theme.spacing.xl : theme.spacing.lg,
+    marginBottom: theme.spacing.xs,
     textAlign: 'center',
-    ...(Platform.OS === 'web' && {
-      marginBottom: '40px' as any,
-      lineHeight: '1.2' as any,
-    }),
+    fontSize: Platform.OS === 'web' ? 28 : theme.typography.sizes['2xl'],
+    lineHeight: Platform.OS === 'web' ? 34 : undefined,
   },
   subtitle: {
     ...theme.typography.styles.body,
     color: theme.colors.neutral[200],
     textAlign: 'center',
-    ...(Platform.OS === 'web' && {
-      marginTop: '0px' as any,
-      paddingTop: '0px' as any,
-      lineHeight: '1.5' as any,
-    }),
+    fontSize: Platform.OS === 'web' ? 15 : theme.typography.sizes.sm,
+    lineHeight: Platform.OS === 'web' ? 22 : undefined,
   },
   debugButton: {
     flexDirection: 'row',
@@ -720,7 +901,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.xl,
-    paddingBottom: theme.spacing['3xl'],
+    paddingBottom: Platform.OS === 'web' ? theme.spacing['2xl'] : theme.spacing['3xl'],
+    paddingTop: theme.spacing.lg,
   },
   libraryButton: {
     flexDirection: 'row',
@@ -729,8 +911,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
-    borderRadius: Platform.OS === 'web' ? 12 : theme.borderRadius.lg,
+    borderRadius: 12,
     minWidth: 120,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     ...(Platform.OS === 'web' && {
       backdropFilter: 'blur(20px)' as any,
       WebkitBackdropFilter: 'blur(20px)' as any,
@@ -759,7 +943,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.gold[500],
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
+    borderWidth: 5,
     borderColor: theme.colors.neutral[50],
     ...theme.shadows.gold,
     ...(Platform.OS === 'web' && {
@@ -779,8 +963,9 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     backgroundColor: theme.colors.neutral[50],
   },
-  placeholder: {
-    width: 60,
+  placeholderButton: {
+    width: 120,
+    height: 48,
   },
   permissionContainer: {
     flex: 1,
@@ -985,5 +1170,42 @@ const styles = StyleSheet.create({
   },
   stepIndicatorCompleted: {
     backgroundColor: theme.colors.gold[400],
+  },
+  tabBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingBottom: Platform.OS === 'web' ? theme.spacing.md : theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    height: Platform.OS === 'web' ? 70 : 80,
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.1)' as any,
+    }),
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.xs,
+    gap: theme.spacing.xs,
+  },
+  tabActive: {
+    // Visual indicator handled by icon/text color
+  },
+  tabLabel: {
+    ...theme.typography.styles.bodySmall,
+    color: theme.colors.text.secondary,
+    fontSize: 13,
+    fontWeight: '500' as any,
+    marginTop: 2,
+  },
+  tabLabelActive: {
+    color: theme.colors.primary[600],
+    fontWeight: '600' as any,
   },
 });

@@ -1,5 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import type { Wine } from '../types';
 import { formatPrice, formatMarkup, getMarkupColor } from '../utils/wineRanking';
@@ -7,10 +9,22 @@ import { formatPrice, formatMarkup, getMarkupColor } from '../utils/wineRanking'
 interface NewWineCardProps {
   wine: Wine;
   rank: number;
+  imageUrl?: string;
+  scanId?: string;
 }
 
-export function NewWineCard({ wine, rank }: NewWineCardProps) {
+export function NewWineCard({ wine, rank, imageUrl, scanId }: NewWineCardProps) {
+  const navigation = useNavigation();
   const markupColor = wine.markup ? getMarkupColor(wine.markup) : theme.colors.text.tertiary;
+
+  const handleChatPress = () => {
+    (navigation as any).navigate('Chat', {
+      wine,
+      imageUrl,
+      scanId,
+      initialMessage: `Tell me more about wine ${wine.displayName}`,
+    });
+  };
 
   return (
     <View style={styles.card}>
@@ -98,6 +112,14 @@ export function NewWineCard({ wine, rank }: NewWineCardProps) {
             )}
           </View>
         )}
+
+        {/* Chat Button */}
+        <View style={styles.chatSection}>
+          <TouchableOpacity style={styles.chatButton} onPress={handleChatPress}>
+            <Ionicons name="chatbubble-outline" size={18} color={theme.colors.primary[600]} />
+            <Text style={styles.chatButtonText}>Chat about this wine</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -207,5 +229,28 @@ const styles = StyleSheet.create({
     ...theme.typography.styles.bodySmall,
     color: theme.colors.text.tertiary,
     marginLeft: 2,
+  },
+  chatSection: {
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
+  },
+  chatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.primary[50],
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.primary[200],
+  },
+  chatButtonText: {
+    ...theme.typography.styles.bodySmall,
+    color: theme.colors.primary[600],
+    marginLeft: theme.spacing.xs,
+    fontFamily: theme.typography.fonts.bodyMedium,
   },
 });

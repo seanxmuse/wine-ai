@@ -8,6 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import type { Wine, RankingCategory } from '../types';
 import { rankWines, formatPrice, formatMarkup, getMarkupColor } from '../utils/wineRanking';
@@ -16,7 +17,7 @@ import { WineCard } from '../components/WineCard';
 export function ResultsScreen() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { wines } = route.params as { wines: Wine[] };
+  const { wines, imageUrl, scanId } = route.params as { wines: Wine[]; imageUrl?: string; scanId?: string };
 
   const [selectedCategory, setSelectedCategory] = useState<RankingCategory>('highestRated');
 
@@ -54,12 +55,20 @@ export function ResultsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
+        <View style={styles.headerTop}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.chatIconButton}
+            onPress={() => (navigation as any).navigate('ChatHistory')}
+          >
+            <Ionicons name="chatbubbles" size={24} color={theme.colors.primary[600]} />
+          </TouchableOpacity>
+        </View>
         <View style={styles.titleContainer}>
           <Text style={styles.title}>Wine List Analysis</Text>
         </View>
@@ -102,6 +111,8 @@ export function ResultsScreen() {
                   wine={wine}
                   rank={index + 1}
                   category="highestRated"
+                  imageUrl={imageUrl}
+                  scanId={scanId}
                 />
               ))}
             </View>
@@ -126,6 +137,8 @@ export function ResultsScreen() {
                   wine={wine}
                   rank={index + 1}
                   category="bestValue"
+                  imageUrl={imageUrl}
+                  scanId={scanId}
                 />
               ))}
             </View>
@@ -150,6 +163,8 @@ export function ResultsScreen() {
                   wine={wine}
                   rank={index + 1}
                   category="mostInexpensive"
+                  imageUrl={imageUrl}
+                  scanId={scanId}
                 />
               ))}
             </View>
@@ -217,6 +232,8 @@ export function ResultsScreen() {
                 wine={wine}
                 rank={index + 1}
                 category={selectedCategory}
+                imageUrl={imageUrl}
+                scanId={scanId}
               />
             ))
           )}
@@ -239,8 +256,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  backButton: {
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: theme.spacing.md,
+  },
+  backButton: {
+    flex: 1,
+  },
+  chatIconButton: {
+    padding: theme.spacing.xs,
   },
   backButtonText: {
     ...theme.typography.styles.body,
