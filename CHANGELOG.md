@@ -5,11 +5,13 @@
 ### Fixed
 - **Camera Feed Not Visible After Granting Permissions** 📱
   - Fixed camera feed remaining opaque/black after granting camera permissions
+  - Removed dark overlay (`rgba(0, 0, 0, 0.6)`) that was blocking camera feed
+  - Changed container background from black to transparent so camera feed shows through
+  - Removed overlay fade animation that delayed camera visibility
+  - Camera feed now visible immediately after permissions are granted (no delay)
   - Removed full-screen overlay View that was blocking camera feed rendering on mobile
   - Restructured UI elements to use absolute positioning instead of full-screen overlay container
   - Header, branding, and controls now positioned individually without blocking camera view
-  - Camera feed now properly visible immediately after permissions are granted
-  - Fixed issue where transparent overlay View was still blocking camera feed on React Native mobile
 - **Camera Screen Opacity and Animation Issues on Mobile** 📱
   - Fixed camera screen remaining opaque after granting permissions
   - Fixed camera feed not visible due to dark container background blocking the view
