@@ -40,7 +40,7 @@ export function CameraScreen() {
   const [hasSkippedPermission, setHasSkippedPermission] = useState(false);
   const [shouldShowCamera, setShouldShowCamera] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
-  const [overlayVisible, setOverlayVisible] = useState(true);
+  const [overlayVisible, setOverlayVisible] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const buttonScale = useRef(new Animated.Value(1)).current;
 
@@ -77,10 +77,10 @@ export function CameraScreen() {
       // Reset animation values first to ensure they start from the correct state
       brandingOpacity.setValue(1);
       brandingPosition.setValue(0);
-      overlayOpacity.setValue(1);
-      setOverlayVisible(true); // Show overlay initially
+      overlayOpacity.setValue(0); // Start with overlay invisible so camera shows immediately
+      setOverlayVisible(false); // Don't show overlay initially - let camera be visible right away
       
-      // Small delay to ensure camera is mounted, then animate
+      // Small delay to ensure camera is mounted, then animate branding only
       const timer = setTimeout(() => {
         Animated.parallel([
           // Float up branding
@@ -95,27 +95,20 @@ export function CameraScreen() {
             duration: 800,
             useNativeDriver: true,
           }),
-          // Fade out the dark overlay to reveal camera clearly
-          Animated.timing(overlayOpacity, {
-            toValue: 0,
-            duration: 800,
-            useNativeDriver: true,
-          }),
         ]).start((finished) => {
           if (finished) {
-            console.log('Intro animation completed, overlay opacity should be 0');
-            // Hide overlay completely after animation to ensure it doesn't block camera
-            setOverlayVisible(false);
+            console.log('Intro animation completed');
           }
         });
-      }, 500); // Give camera time to initialize
+      }, 300); // Shorter delay - camera should initialize quickly
       
       return () => clearTimeout(timer);
     } else {
       // Reset to initial state when camera should not be shown
       brandingOpacity.setValue(1);
       brandingPosition.setValue(0);
-      overlayOpacity.setValue(1);
+      overlayOpacity.setValue(0);
+      setOverlayVisible(false);
     }
   }, [shouldShowCamera]);
 
@@ -879,19 +872,7 @@ export function CameraScreen() {
             setCameraReady(true);
           }}
         >
-          {/* Dimmer Background - fades out to reveal camera clearly */}
-          {overlayVisible && (
-            <Animated.View 
-              style={[
-                StyleSheet.absoluteFill, 
-                { 
-                  backgroundColor: 'rgba(0, 0, 0, 0.6)', 
-                  opacity: overlayOpacity,
-                }
-              ]} 
-              pointerEvents="none"
-            />
-          )}
+          {/* Dimmer Background - removed to ensure camera feed is always visible */}
 
           {/* Header: Just Icons - positioned absolutely, not in full-screen overlay */}
           <View style={styles.header}>
@@ -1015,7 +996,7 @@ function getStepCompleted(currentStep: ProcessingStep, step: ProcessingStep): bo
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000', // Black background - camera will show through overlay when ready
+    backgroundColor: 'transparent', // Transparent so camera feed shows through
   },
   camera: {
     flex: 1,
@@ -1095,7 +1076,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.xl,
-    pointerEvents: 'none',
+    pointerEvents: 'none', // Critical: don't block touch events, only visual overlay
     // Gap support in RN Web can be flaky, rely on margins instead
     // gap: theme.spacing.md, 
   },
