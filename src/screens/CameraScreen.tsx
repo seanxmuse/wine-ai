@@ -60,14 +60,14 @@ export function CameraScreen() {
   const brandingPosition = useRef(new Animated.Value(0)).current;
   const overlayOpacity = useRef(new Animated.Value(1)).current;
 
-  // Track when camera should be shown
+  // Track when camera should be shown - only show if permission is granted (not if skipped)
   useEffect(() => {
-    if (permission?.granted || hasSkippedPermission) {
+    if (permission?.granted) {
       setShouldShowCamera(true);
     } else {
       setShouldShowCamera(false);
     }
-  }, [permission?.granted, hasSkippedPermission]);
+  }, [permission?.granted]);
 
   // Intro Animation Effect - Reset and trigger when camera should be shown
   useEffect(() => {
@@ -848,6 +848,48 @@ export function CameraScreen() {
     );
   }
 
+  // If user skipped permission, show image picker interface instead of camera
+  if (hasSkippedPermission && !permission?.granted) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.permissionContainer}>
+          <View style={styles.permissionContent}>
+            <Ionicons name="images-outline" size={64} color={theme.colors.gold[500]} />
+            <Text style={styles.permissionTitle}>Select Wine List Image</Text>
+            <Text style={styles.permissionDescription}>
+              Choose a photo from your library to scan for wines.
+            </Text>
+            <TouchableOpacity
+              style={styles.permissionButton}
+              onPress={pickImage}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="images-outline"
+                size={24}
+                color={theme.colors.neutral[50]}
+                style={styles.permissionButtonIcon}
+              />
+              <Text style={styles.permissionButtonText}>Choose Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={async () => {
+                const result = await requestPermission();
+                if (result.granted) {
+                  setHasSkippedPermission(false);
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.skipButtonText}>Enable Camera</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   // Only render camera if shouldShowCamera is true
   if (!shouldShowCamera) {
     return null; // This should never happen due to earlier checks, but safety guard
@@ -857,8 +899,10 @@ export function CameraScreen() {
     shouldShowCamera, 
     permissionGranted: permission?.granted,
     hasSkippedPermission,
-    cameraReady
+    cameraReady,
+    platform: Platform.OS
   });
+
 
   return (
     <View style={styles.container}>
@@ -996,12 +1040,28 @@ function getStepCompleted(currentStep: ProcessingStep, step: ProcessingStep): bo
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent', // Transparent so camera feed shows through
+    backgroundColor: '#000000', // Black background so camera feed is visible
+    ...(Platform.OS === 'web' && {
+      position: 'relative' as any,
+      width: '100vw' as any,
+      height: '100vh' as any,
+      overflow: 'hidden' as any,
+    }),
   },
   camera: {
     flex: 1,
     width: '100%',
     height: '100%',
+    ...(Platform.OS === 'web' && {
+      position: 'absolute' as any,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: '100%' as any,
+      height: '100%' as any,
+      zIndex: 0,
+    }),
   },
   header: {
     position: 'absolute',
@@ -1014,6 +1074,7 @@ const styles = StyleSheet.create({
     zIndex: 100,
     ...(Platform.OS === 'web' && {
       pointerEvents: 'auto' as any,
+      position: 'absolute' as any,
     }),
   },
   headerTop: {
@@ -1077,6 +1138,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: theme.spacing.xl,
     pointerEvents: 'none', // Critical: don't block touch events, only visual overlay
+    zIndex: 50,
+    ...(Platform.OS === 'web' && {
+      position: 'absolute' as any,
+    }),
     // Gap support in RN Web can be flaky, rely on margins instead
     // gap: theme.spacing.md, 
   },
@@ -1122,6 +1187,9 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'web' ? theme.spacing['2xl'] : theme.spacing['3xl'],
     paddingTop: theme.spacing.lg,
     zIndex: 100,
+    ...(Platform.OS === 'web' && {
+      position: 'absolute' as any,
+    }),
   },
   libraryButton: {
     width: 64,
@@ -1460,5 +1528,37 @@ const styles = StyleSheet.create({
   },
   stepIndicatorCompleted: {
     backgroundColor: theme.colors.gold[400],
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.xl,
+    backgroundColor: theme.colors.background,
+  },
+  errorTitle: {
+    ...theme.typography.styles.heroTitle,
+    color: theme.colors.text.primary,
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
+  },
+  errorText: {
+    ...theme.typography.styles.body,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  errorButton: {
+    marginTop: theme.spacing.xl,
+    backgroundColor: theme.colors.gold[500],
+    paddingHorizontal: theme.spacing['2xl'],
+    paddingVertical: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    ...theme.shadows.gold,
+  },
+  errorButtonText: {
+    ...theme.typography.styles.button,
+    color: theme.colors.neutral[50],
+    fontWeight: '600' as any,
   },
 });

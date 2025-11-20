@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Fixed
+- **Camera Feed White Screen Issue** 📱
+  - Fixed camera feed showing white screen instead of live camera view
+  - Changed container background from transparent to black for proper camera rendering
+  - Added web-specific styling with explicit positioning and z-index for CameraView
+  - Fixed camera only rendering when permissions are actually granted (not when skipped)
+  - Added proper handling for skipped permissions with image picker fallback UI
+  - Improved camera initialization and rendering on web platform
+  - Camera feed now properly visible after granting permissions
 - **Camera Feed Not Visible After Granting Permissions** 📱
   - Fixed camera feed remaining opaque/black after granting camera permissions
   - Removed dark overlay (`rgba(0, 0, 0, 0.6)`) that was blocking camera feed
