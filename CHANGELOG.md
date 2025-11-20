@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Fixed
+- **Camera Feed White Screen Issue** 📱
+  - Fixed camera feed showing white screen instead of live camera view
+  - Changed container background from transparent to black for proper camera rendering
+  - Fixed centerContent overlay positioning to not cover entire screen (changed from `top: 0, bottom: 0` to `top: '50%'`)
+  - Added error handling with `onMountError` callback to catch camera initialization failures
+  - Added loading indicator while camera initializes to show camera is starting
+  - Added web-specific camera styling with explicit minHeight/minWidth for proper rendering
+  - Camera feed should now display correctly after permissions are granted
 - **Camera Feed Not Visible After Granting Permissions** 📱
   - Fixed camera feed remaining opaque/black after granting camera permissions
   - Removed dark overlay (`rgba(0, 0, 0, 0.6)`) that was blocking camera feed

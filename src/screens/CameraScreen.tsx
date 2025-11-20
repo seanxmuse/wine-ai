@@ -871,9 +871,17 @@ export function CameraScreen() {
             console.log('Camera is ready');
             setCameraReady(true);
           }}
+          onMountError={(error) => {
+            console.error('Camera mount error:', error);
+            Alert.alert('Camera Error', 'Failed to initialize camera. Please try again.');
+          }}
         >
-          {/* Dimmer Background - removed to ensure camera feed is always visible */}
-
+          {/* Show loading indicator while camera initializes */}
+          {!cameraReady && (
+            <View style={styles.cameraLoading}>
+              <ActivityIndicator size="large" color={theme.colors.gold[500]} />
+            </View>
+          )}
           {/* Header: Just Icons - positioned absolutely, not in full-screen overlay */}
           <View style={styles.header}>
             <View style={styles.headerTop}>
@@ -996,12 +1004,16 @@ function getStepCompleted(currentStep: ProcessingStep, step: ProcessingStep): bo
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent', // Transparent so camera feed shows through
+    backgroundColor: '#000000', // Black background for camera
   },
   camera: {
     flex: 1,
     width: '100%',
     height: '100%',
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+      minWidth: '100vw',
+    }),
   },
   header: {
     position: 'absolute',
@@ -1069,16 +1081,14 @@ const styles = StyleSheet.create({
   // New Center Content Styles
   centerContent: {
     position: 'absolute',
-    top: 0,
+    top: '50%',
     left: 0,
     right: 0,
-    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.xl,
     pointerEvents: 'none', // Critical: don't block touch events, only visual overlay
-    // Gap support in RN Web can be flaky, rely on margins instead
-    // gap: theme.spacing.md, 
+    zIndex: 1,
   },
   logoText: {
     fontSize: 64,
@@ -1460,5 +1470,16 @@ const styles = StyleSheet.create({
   },
   stepIndicatorCompleted: {
     backgroundColor: theme.colors.gold[400],
+  },
+  cameraLoading: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 5,
   },
 });
