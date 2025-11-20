@@ -3,14 +3,15 @@
 ## [Unreleased]
 
 ### Fixed
-- **Camera Feed White Screen Issue** 📱
-  - Fixed camera feed showing white screen instead of live camera view
+- **Camera Feed White Screen Issue on Web** 📱
+  - Fixed camera feed showing white screen on web platform
+  - Replaced expo-camera's CameraView with native browser getUserMedia API for web
+  - Implemented native HTML video element injection for web camera feed
+  - Added canvas-based photo capture for web platform
   - Changed container background from transparent to black for proper camera rendering
-  - Added web-specific styling with explicit positioning and z-index for CameraView
   - Fixed camera only rendering when permissions are actually granted (not when skipped)
   - Added proper handling for skipped permissions with image picker fallback UI
-  - Improved camera initialization and rendering on web platform
-  - Camera feed now properly visible after granting permissions
+  - Camera feed now properly visible on web after granting permissions using native browser APIs
 - **Camera Feed Not Visible After Granting Permissions** 📱
   - Fixed camera feed remaining opaque/black after granting camera permissions
   - Removed dark overlay (`rgba(0, 0, 0, 0.6)`) that was blocking camera feed

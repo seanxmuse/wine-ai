@@ -41,7 +41,11 @@ export function CameraScreen() {
   const [shouldShowCamera, setShouldShowCamera] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [overlayVisible, setOverlayVisible] = useState(false);
+  const [webCameraStream, setWebCameraStream] = useState<MediaStream | null>(null);
+  const [webVideoElement, setWebVideoElement] = useState<HTMLVideoElement | null>(null);
   const cameraRef = useRef<CameraView>(null);
+  const webVideoRef = useRef<HTMLVideoElement | null>(null);
+  const webCameraContainerRef = useRef<View>(null);
   const buttonScale = useRef(new Animated.Value(1)).current;
 
   // Debug: Log permission state changes
@@ -68,6 +72,71 @@ export function CameraScreen() {
       setShouldShowCamera(false);
     }
   }, [permission?.granted]);
+
+  // Web camera setup using native getUserMedia
+  useEffect(() => {
+    if (Platform.OS === 'web' && permission?.granted && !webCameraStream) {
+      const setupWebCamera = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'environment' } 
+          });
+          setWebCameraStream(stream);
+          
+          // Find or create video element
+          let videoEl = webVideoRef.current;
+          if (!videoEl) {
+            // Wait for container to be mounted
+            setTimeout(() => {
+              if (webCameraContainerRef.current) {
+                // @ts-ignore - accessing React Native Web's internal DOM node
+                const containerNode = (webCameraContainerRef.current as any)._nativeNode || 
+                                     (webCameraContainerRef.current as any).base ||
+                                     (webCameraContainerRef.current as any)._domNode;
+                
+                if (containerNode) {
+                  videoEl = document.createElement('video');
+                  videoEl.autoplay = true;
+                  videoEl.playsInline = true;
+                  videoEl.muted = true;
+                  videoEl.style.position = 'absolute';
+                  videoEl.style.top = '0';
+                  videoEl.style.left = '0';
+                  videoEl.style.width = '100%';
+                  videoEl.style.height = '100%';
+                  videoEl.style.objectFit = 'cover';
+                  videoEl.style.zIndex = '0';
+                  
+                  containerNode.appendChild(videoEl);
+                  webVideoRef.current = videoEl;
+                  
+                  videoEl.srcObject = stream;
+                  videoEl.play();
+                }
+              }
+            }, 100);
+          } else {
+            videoEl.srcObject = stream;
+            videoEl.play();
+          }
+        } catch (error) {
+          console.error('Failed to access web camera:', error);
+        }
+      };
+      setupWebCamera();
+    }
+
+    return () => {
+      if (webCameraStream) {
+        webCameraStream.getTracks().forEach(track => track.stop());
+        setWebCameraStream(null);
+      }
+      if (webVideoRef.current) {
+        webVideoRef.current.remove();
+        webVideoRef.current = null;
+      }
+    };
+  }, [Platform.OS, permission?.granted, webCameraStream]);
 
   // Intro Animation Effect - Reset and trigger when camera should be shown
   useEffect(() => {
@@ -903,6 +972,101 @@ export function CameraScreen() {
     platform: Platform.OS
   });
 
+  // Web camera capture using native video element
+  const captureWebPhoto = async () => {
+    if (!webVideoRef.current || isProcessing) return;
+    
+    try {
+      setIsProcessing(true);
+      const video = webVideoRef.current;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            setPreviewImage(url);
+            setIsProcessing(false);
+          }
+        }, 'image/jpeg', 0.8);
+      }
+    } catch (error) {
+      console.error('Error capturing web photo:', error);
+      Alert.alert('Error', 'Failed to capture image');
+      setIsProcessing(false);
+    }
+  };
+
+  // On web, use native video element for camera feed
+  if (Platform.OS === 'web' && permission?.granted) {
+    return (
+      <View style={styles.container}>
+        <View 
+          ref={webCameraContainerRef}
+          style={styles.webCameraPlaceholder}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <TouchableOpacity
+                style={styles.chatHistoryButton}
+                onPress={() => (navigation as any).navigate('ChatHistory')}
+              >
+                <Ionicons name="time-outline" size={24} color={theme.colors.neutral[50]} />
+              </TouchableOpacity>
+              
+              <View style={{ flex: 1 }} />
+
+              <TouchableOpacity
+                style={styles.settingsButton}
+                onPress={() => (navigation as any).navigate('Settings')}
+              >
+                <Ionicons name="settings-outline" size={24} color={theme.colors.neutral[50]} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Controls */}
+          <View style={styles.controls}>
+            <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+              <TouchableOpacity
+                style={styles.libraryButton}
+                onPress={pickImage}
+                disabled={isProcessing}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="images-outline" size={28} color={theme.colors.neutral[50]} />
+              </TouchableOpacity>
+            </Animated.View>
+
+            <TouchableOpacity
+              style={[styles.captureButton, isProcessing && styles.captureButtonDisabled]}
+              onPress={captureWebPhoto}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <ActivityIndicator size="large" color={theme.colors.gold[500]} />
+              ) : (
+                <View style={styles.captureButtonInner} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.chatButton}
+              onPress={() => (navigation as any).navigate('Chat', {
+                  conversationId: routeConversationId || activeConversationId
+              })}
+            >
+              <Ionicons name="chatbubbles-outline" size={28} color={theme.colors.neutral[50]} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -1560,5 +1724,31 @@ const styles = StyleSheet.create({
     ...theme.typography.styles.button,
     color: theme.colors.neutral[50],
     fontWeight: '600' as any,
+  },
+  webCameraPlaceholder: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  webCameraContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.xl,
+    zIndex: 1,
+  },
+  webCameraTitle: {
+    ...theme.typography.styles.heroTitle,
+    color: theme.colors.neutral[50],
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
+    textAlign: 'center',
+  },
+  webCameraDescription: {
+    ...theme.typography.styles.body,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    fontSize: Platform.OS === 'web' ? 18 : theme.typography.sizes.base,
   },
 });
