@@ -7,7 +7,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +18,6 @@ export function ChatHistoryScreen() {
   const navigation = useNavigation();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadConversations();
@@ -30,12 +28,8 @@ export function ChatHistoryScreen() {
       setIsLoading(true);
       const convs = await getChatConversations();
       setConversations(convs);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading conversations:', error);
-      const errorMessage = error.message?.includes('network') || error.message?.includes('fetch')
-        ? 'Network error. Please check your internet connection and try again.'
-        : 'Failed to load conversations. Please try again.';
-      Alert.alert('Error', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -52,21 +46,10 @@ export function ChatHistoryScreen() {
 
   const handleDeleteConversation = async (conversationId: string) => {
     try {
-      setDeletingIds(prev => new Set(prev).add(conversationId));
       await deleteChatConversation(conversationId);
       setConversations(prev => prev.filter(c => c.id !== conversationId));
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting conversation:', error);
-      const errorMessage = error.message?.includes('network') || error.message?.includes('fetch')
-        ? 'Network error. Please check your internet connection and try again.'
-        : 'Failed to delete conversation. Please try again.';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setDeletingIds(prev => {
-        const next = new Set(prev);
-        next.delete(conversationId);
-        return next;
-      });
     }
   };
 
@@ -96,20 +79,12 @@ export function ChatHistoryScreen() {
           <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chat History</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => (navigation as any).navigate('Settings')}
-          >
-            <Ionicons name="settings-outline" size={24} color={theme.colors.text.secondary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.createChatButton}
-            onPress={() => (navigation as any).navigate('Chat', {})}
-          >
-            <Ionicons name="add" size={24} color={theme.colors.primary[600]} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.createChatButton}
+          onPress={() => (navigation as any).navigate('Chat', {})}
+        >
+          <Ionicons name="add" size={24} color={theme.colors.primary[600]} />
+        </TouchableOpacity>
       </View>
 
       {/* Bottom Tab Bar */}
@@ -172,13 +147,8 @@ export function ChatHistoryScreen() {
               <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={() => handleDeleteConversation(conversation.id)}
-                disabled={deletingIds.has(conversation.id)}
               >
-                {deletingIds.has(conversation.id) ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary[600]} />
-                ) : (
-                  <Ionicons name="trash-outline" size={20} color={theme.colors.text.tertiary} />
-                )}
+                <Ionicons name="trash-outline" size={20} color={theme.colors.text.tertiary} />
               </TouchableOpacity>
             </TouchableOpacity>
           ))
@@ -277,14 +247,6 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: theme.spacing.sm,
     marginLeft: theme.spacing.sm,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  settingsButton: {
-    padding: theme.spacing.xs,
   },
   createChatButton: {
     padding: theme.spacing.xs,

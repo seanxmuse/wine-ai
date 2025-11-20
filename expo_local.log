@@ -1,0 +1,21 @@
+/Users/seanx/code/wine ai/wine-scanner/node_modules/expo/node_modules/@expo/cli/build/src/utils/errors.js:130
+    throw error;
+    ^
+
+Error: EPERM: operation not permitted, open '/Users/seanx/code/wine ai/wine-scanner/.env'
+    at Object.readFileSync (node:fs:441:20)
+    at /Users/seanx/code/wine ai/wine-scanner/node_modules/@expo/env/build/index.js:142:48
+    at Array.forEach (<anonymous>)
+    at parseEnvFiles (/Users/seanx/code/wine ai/wine-scanner/node_modules/@expo/env/build/index.js:140:27)
+    at parseProjectEnv (/Users/seanx/code/wine ai/wine-scanner/node_modules/@expo/env/build/index.js:249:10)
+    at get (/Users/seanx/code/wine ai/wine-scanner/node_modules/@expo/env/build/index.js:299:12)
+    at Object.load (/Users/seanx/code/wine ai/wine-scanner/node_modules/@expo/env/build/index.js:316:19)
+    at loadEnvFiles (/Users/seanx/code/wine ai/wine-scanner/node_modules/expo/node_modules/@expo/cli/build/src/utils/nodeEnv.js:74:19)
+    at expoStart (/Users/seanx/code/wine ai/wine-scanner/node_modules/expo/node_modules/@expo/cli/build/src/start/index.js:138:5) {
+  errno: -1,
+  code: 'EPERM',
+  syscall: 'open',
+  path: '/Users/seanx/code/wine ai/wine-scanner/.env'
+}
+
+Node.js v22.17.1

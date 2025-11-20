@@ -3,6 +3,57 @@
 ## [Unreleased]
 
 ### Fixed
+- **Camera Screen Opacity and Animation Issues on Mobile** 📱
+  - Fixed camera screen remaining opaque after granting permissions
+  - Fixed camera feed not visible due to dark container background blocking the view
+  - Changed container background from dark color to transparent to allow camera feed to show through
+  - Fixed CameraView styling to use absoluteFill for proper rendering
+  - Fixed intro animation not triggering when camera permission is granted
+  - Improved animation state management with `shouldShowCamera` state variable
+  - Fixed overlay opacity animation to properly fade out and reveal camera feed
+  - Removed conflicting background color from overlay styles
+  - Animation now uses native driver for better performance on mobile
+  - Animation values now properly reset when permission state changes
+- **Camera Permission Prompt Not Appearing on iPhone** 📱
+  - Fixed iOS camera permission prompt not showing when tapping "Grant Permission" button
+  - Improved permission state handling to properly check `canAskAgain` status
+  - Added proper handling for permanently denied permissions (directs to Settings)
+  - Added debug logging to track permission state changes
+  - Enhanced error handling with better user feedback and Settings redirect
+  - Permission prompt now properly triggers iOS system dialog on first request
+- **Post-Capture Preview Screen** 📸
+  - Added dedicated "Retake" button alongside "Send" button in preview screen
+  - Changed "Analyze" button text to "Send" for clarity
+  - Preview actions now show both Retake and Send buttons side-by-side
+  - Improved preview screen layout with proper button spacing
+- **Chat State Preservation** 💬
+  - Fixed navigation to preserve chat conversation when switching between Chat ↔ Camera modes
+  - ChatScreen now passes conversationId when navigating to Camera
+  - CameraScreen now uses routeConversationId when navigating back to Chat
+  - Users can now seamlessly switch between modes without losing their conversation
+
+### Added
+- **Camera Permission Skip Button** 📷
+  - Added "Skip for now" button on camera permission screen to allow users to proceed without granting camera access
+  - Users can now use the library button even without camera permission
+  - Added "Enable Camera" button on camera screen when permission is not granted
+  - Allows app to function in browser environments where camera permissions cannot be granted
+  - Camera screen shows placeholder view with enable button when permission skipped
+
+### Changed
+- **Complete UI Redesign to Match Mockups** 🎨
+  - Updated theme colors to match luxury wine app aesthetic (gold, burgundy, cream, parchment)
+  - Updated typography system with Playfair Display and Crimson Pro fonts
+  - Updated CameraScreen with new header, center content, buttons, and tab bar styling
+  - Updated ChatScreen with refined header, bubbles, and input styling
+  - Updated SettingsScreen with profile card, stats card, and refined preferences section
+  - Updated ResultsScreen wine detail view with improved card styling and action buttons
+  - Updated WineCard, ChatWineCard, and ChatInput components to match new style
+  - All screens now use consistent luxury-inspired design language
+  - Improved shadows, borders, and spacing throughout the app
+  - Added gradient backgrounds and glass-morphism effects where appropriate
+
+### Fixed
 - **Demo UI Lab Excluded from Deployment** 🚫
   - Added `demo-ui/` folder to `.vercelignore` to prevent deployment
   - Added `App.demo.js` and `App.prod.js` to `.vercelignore`

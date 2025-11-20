@@ -47,3 +47,6 @@ WHERE schemaname = 'public'
   AND tablename IN ('chat_conversations', 'chat_messages')
 ORDER BY tablename, indexname;
 
+
+
+

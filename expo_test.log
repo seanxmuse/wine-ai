@@ -1,0 +1,27 @@
+env: load .env
+env: export EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY DB_PASSWORD EXPO_PUBLIC_GEMINI_API_KEY EXPO_PUBLIC_WINELABS_API_KEY EXPO_PUBLIC_WINELABS_USER_ID
+Starting project at /Users/seanx/code/wine ai/wine-scanner
+Starting Metro Bundler
+The following packages should be updated for best compatibility with the installed expo version:
+  expo@54.0.23 - expected version: ~54.0.25
+  react@18.3.1 - expected version: 19.1.0
+  react-dom@18.3.1 - expected version: 19.1.0
+  react-native-screens@4.18.0 - expected version: ~4.16.0
+Your project may not work correctly until you install the expected versions of the packages.
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+| (node:29949) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:29950) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+Web Bundled 444ms index.js (780 modules)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 14ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 13ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 15ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console

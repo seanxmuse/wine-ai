@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Image,
@@ -15,7 +14,6 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import Markdown from 'react-native-markdown-display';
 import { theme } from '../theme';
 import type { Wine, ChatConversation, ChatMessage } from '../types';
 import {
@@ -36,6 +34,8 @@ import { matchWinesToLwin, getPriceStats, getCriticScores } from '../services/wi
 import { calculateMarkup } from '../utils/wineRanking';
 import { supabase } from '../services/supabase';
 import { Alert } from 'react-native';
+import { ChatBubble } from '../components/ChatBubble';
+import { ChatInput } from '../components/ChatInput';
 
 export function ChatScreen() {
   const route = useRoute();
@@ -102,9 +102,12 @@ export function ChatScreen() {
 
   useEffect(() => {
     if (messages.length > 0) {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
+      // Small timeout to allow layout to settle
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     }
-  }, [messages]);
+  }, [messages, isLoading, isAnalyzing]);
 
   const initializeConversation = async () => {
     try {
@@ -120,8 +123,6 @@ export function ChatScreen() {
         setConversation(conv);
         const existingMessages = await getChatMessages(conversationId);
         setMessages(existingMessages);
-        // Note: winesData for existing messages won't be available since it's stored in memory
-        // This is acceptable for MVP - "View Results" will only work for new messages
         if (conv.imageUrl) {
           setUploadedImage(conv.imageUrl);
         }
@@ -164,25 +165,19 @@ export function ChatScreen() {
     setShowImagePicker(false);
     
     try {
-      let result;
-      
       if (option === 'camera') {
-        const permission = await ImagePicker.requestCameraPermissionsAsync();
-        if (!permission.granted) {
-          return;
-        }
-        result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: false,
-          quality: 0.8,
-        });
-      } else {
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: false,
-          quality: 0.8,
-        });
+        // Navigate to Camera screen instead of opening camera picker
+        // Pass a flag to indicate we came from Chat so it returns here after processing
+        (navigation as any).navigate('Camera', { returnToChat: true, conversationId: conversation?.id });
+        return;
       }
+      
+      // For library, use image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
@@ -328,7 +323,6 @@ export function ChatScreen() {
           const match = matches[index];
           const lwin = match?.lwin;
           
-          // Build display name early so we can use it in fallback logic
           const displayName = match?.display_name || parsed.wineName || 'Unknown Wine';
 
           let realPrice: number | undefined;
@@ -359,7 +353,7 @@ export function ChatScreen() {
                 );
                 critic = topScore.critic;
               } else {
-                // Fallback to web search if WineLabs has no scores
+                 // Fallback to web search if WineLabs has no scores
                 console.log(`[WineLabs] No critic scores from WineLabs, trying web search for: ${displayName}`);
                 const { searchCriticScoresOnWeb } = await import('../services/webSearch');
                 const webScores = await searchCriticScoresOnWeb(displayName, parsed.vintage);
@@ -371,12 +365,11 @@ export function ChatScreen() {
                     s.score > max.score ? s : max
                   );
                   critic = topScore.critic;
-                  console.log(`[WebSearch] Found ${webScores.length} critic scores via web search`);
                 }
               }
             } catch (e) {
               console.error('Error fetching critic scores:', e);
-              // Try web search fallback even on error
+               // Try web search fallback even on error
               try {
                 console.log(`[WineLabs] Error getting scores, trying web search fallback for: ${displayName}`);
                 const { searchCriticScoresOnWeb } = await import('../services/webSearch');
@@ -435,14 +428,12 @@ export function ChatScreen() {
       // Generate chat title based on wines
       try {
         await generateChatTitle(conversation.id, undefined, wines);
-        // Reload conversation to get updated title
         const updatedConv = await getChatConversation(conversation.id);
         if (updatedConv) {
           setConversation(updatedConv);
         }
       } catch (titleError) {
         console.error('Error generating chat title:', titleError);
-        // Don't show error to user - title generation is not critical
       }
 
       // Update conversation with image URL if it doesn't have one
@@ -454,7 +445,6 @@ export function ChatScreen() {
           setConversation(updatedConversation);
         } catch (updateError) {
           console.error('Error updating conversation image URL:', updateError);
-          // Don't show alert for this - it's not critical
         }
       }
     } catch (error: any) {
@@ -465,7 +455,6 @@ export function ChatScreen() {
       
       Alert.alert('Error', errorContent);
 
-      // Save error message to database
       try {
         const { data: savedErrorMessage } = await supabase
           .from('chat_messages')
@@ -509,10 +498,8 @@ export function ChatScreen() {
     };
 
     try {
-      // Add user message to UI immediately
       setMessages(prev => [...prev, tempUserMessage]);
 
-      // Send message and get response
       const assistantMessage = await sendChatMessage(
         conversation.id,
         userMessage,
@@ -520,7 +507,6 @@ export function ChatScreen() {
         uploadedImage || imageUrl || conversation.imageUrl
       );
 
-      // Replace temp message and add assistant response
       setMessages(prev => [
         ...prev.filter(m => m.id !== tempUserMessage.id),
         {
@@ -530,26 +516,21 @@ export function ChatScreen() {
         assistantMessage,
       ]);
 
-      // Generate chat title after first message exchange
       if (messages.length === 0) {
         try {
           await generateChatTitle(conversation.id, userMessage);
-          // Reload conversation to get updated title
           const updatedConv = await getChatConversation(conversation.id);
           if (updatedConv) {
             setConversation(updatedConv);
           }
         } catch (titleError) {
           console.error('Error generating chat title:', titleError);
-          // Don't show error to user - title generation is not critical
         }
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
-      // Remove temp message on error
       setMessages(prev => prev.filter(m => m.id !== tempUserMessage.id));
       
-      // Show user-friendly error message
       const errorMessage = error.message?.includes('network') || error.message?.includes('fetch')
         ? 'Network error. Please check your internet connection and try again.'
         : error.message?.includes('API key')
@@ -562,14 +543,27 @@ export function ChatScreen() {
     }
   };
 
+  const handleWinePress = (selectedWine: Wine) => {
+    (navigation as any).navigate('Results', {
+      wine: selectedWine, // Or adjust if Results expects array
+      wines: [selectedWine]
+    });
+  };
+
   if (isInitializing) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+          <TouchableOpacity onPress={() => (navigation as any).navigate('ChatHistory')} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#1c1915" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Chat</Text>
+          <TouchableOpacity 
+            onPress={() => (navigation as any).navigate('Camera')} 
+            style={styles.cameraButton}
+          >
+            <Ionicons name="camera-outline" size={24} color={theme.colors.text.primary} />
+          </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary[600]} />
@@ -582,30 +576,36 @@ export function ChatScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+        <TouchableOpacity onPress={() => (navigation as any).navigate('ChatHistory')} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#1c1915" />
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>{conversation?.title || wine?.displayName || 'Chat'}</Text>
-          {wine?.vintage && <Text style={styles.headerSubtitle}>{wine.vintage}</Text>}
-        </View>
+        <Text style={styles.headerTitle}>Wine Chat</Text>
+        <TouchableOpacity 
+          onPress={() => (navigation as any).navigate('Camera', { 
+            returnToChat: true, 
+            conversationId: conversation?.id 
+          })} 
+          style={styles.cameraButton}
+        >
+          <Ionicons name="camera-outline" size={24} color={theme.colors.text.primary} />
+        </TouchableOpacity>
       </View>
-
-      {(imageUrl || conversation?.imageUrl) && (
-        <View style={styles.imageContainer}>
-          <Image source={{ uri: imageUrl || conversation?.imageUrl }} style={styles.wineListImage} resizeMode="contain" />
-        </View>
-      )}
 
       <ScrollView
         ref={scrollViewRef}
         style={styles.messagesContainer}
         contentContainerStyle={styles.messagesContent}
       >
-        {messages.length === 0 && (
+        {uploadedImage && !conversation?.imageUrl && (
+           <View style={styles.uploadedImageContainer}>
+             <Image source={{ uri: uploadedImage }} style={styles.uploadedImage} resizeMode="contain" />
+           </View>
+        )}
+
+        {messages.length === 0 && !uploadedImage && (
           <View style={styles.emptyState}>
             <Ionicons name="chatbubbles-outline" size={48} color={theme.colors.text.tertiary} />
             <Text style={styles.emptyText}>
@@ -621,106 +621,19 @@ export function ChatScreen() {
 
         {messages.map((message) => {
           const messageWines = winesData.get(message.id);
-          const hasWinesData = messageWines && messageWines.length > 0;
-          
           return (
-            <View
-              key={message.id}
-              style={[
-                styles.messageContainer,
-                message.role === 'user' ? styles.userMessage : styles.assistantMessage,
-              ]}
-            >
-              {message.role === 'assistant' && (
-                <View style={styles.avatar}>
-                  <Ionicons name="wine" size={20} color={theme.colors.gold[600]} />
-                </View>
-              )}
-              <View
-                style={[
-                  styles.messageBubble,
-                  message.role === 'user' ? styles.userBubble : styles.assistantBubble,
-                ]}
-              >
-                {message.imageUrl && message.role === 'assistant' && (
-                  <View style={styles.messageImageContainer}>
-                    <Image source={{ uri: message.imageUrl }} style={styles.messageImage} resizeMode="contain" />
-                  </View>
-                )}
-                {message.role === 'assistant' ? (
-                  <Markdown
-                    style={{
-                      body: {
-                        color: theme.colors.text.primary,
-                        fontSize: 16,
-                        lineHeight: 22,
-                      },
-                      heading2: {
-                        color: theme.colors.text.primary,
-                        fontSize: 20,
-                        fontWeight: 'bold',
-                        marginTop: 12,
-                        marginBottom: 8,
-                      },
-                      bullet_list: {
-                        marginTop: 4,
-                        marginBottom: 4,
-                      },
-                      list_item: {
-                        marginBottom: 4,
-                      },
-                      strong: {
-                        fontWeight: 'bold',
-                        color: theme.colors.text.primary,
-                      },
-                      paragraph: {
-                        marginBottom: 8,
-                      },
-                    }}
-                  >
-                    {message.content}
-                  </Markdown>
-                ) : (
-                  <Text
-                    style={[
-                      styles.messageText,
-                      message.role === 'user' ? styles.userText : styles.assistantText,
-                    ]}
-                  >
-                    {message.content}
-                  </Text>
-                )}
-                {hasWinesData && message.imageUrl && (
-                  <TouchableOpacity
-                    style={styles.viewResultsButton}
-                    onPress={() => {
-                      (navigation as any).navigate('Results', {
-                        wines: messageWines,
-                        imageUrl: message.imageUrl,
-                      });
-                    }}
-                  >
-                    <Ionicons name="stats-chart" size={16} color={theme.colors.primary[600]} />
-                    <Text style={styles.viewResultsText}>View Results</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              {message.role === 'user' && (
-                <View style={styles.avatar}>
-                  <Ionicons name="person" size={20} color={theme.colors.primary[600]} />
-                </View>
-              )}
-            </View>
+            <ChatBubble 
+              key={message.id} 
+              message={message} 
+              wines={messageWines}
+              onWinePress={handleWinePress}
+            />
           );
         })}
 
         {(isLoading || isAnalyzing) && (
-          <View style={styles.loadingMessage}>
-            <View style={styles.avatar}>
-              <Ionicons name="wine" size={20} color={theme.colors.gold[600]} />
-            </View>
-            <View style={styles.assistantBubble}>
-              {isAnalyzing ? (
+          <View style={styles.loadingContainer}>
+             {isAnalyzing ? (
                 <View style={styles.analyzingContainer}>
                   <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                     <Ionicons name="wine" size={32} color={theme.colors.gold[500]} />
@@ -741,57 +654,18 @@ export function ChatScreen() {
                   </View>
                 </View>
               )}
-            </View>
-          </View>
-        )}
-
-        {uploadedImage && !conversation?.imageUrl && (
-          <View style={styles.messageContainer}>
-            <View style={styles.userMessage}>
-              <View style={styles.userBubble}>
-                <Image source={{ uri: uploadedImage }} style={styles.uploadedImage} resizeMode="contain" />
-              </View>
-              <View style={styles.avatar}>
-                <Ionicons name="person" size={20} color={theme.colors.primary[600]} />
-              </View>
-            </View>
           </View>
         )}
       </ScrollView>
 
-      <View style={styles.inputContainer}>
-        <TouchableOpacity
-          style={styles.imageButton}
-          onPress={handleImagePick}
-          disabled={isLoading || isAnalyzing}
-        >
-          <Ionicons
-            name="camera-outline"
-            size={24}
-            color={isLoading || isAnalyzing ? theme.colors.text.tertiary : theme.colors.primary[600]}
-          />
-        </TouchableOpacity>
-        <TextInput
-          style={styles.input}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder={wine ? "Ask about this wine..." : "Ask me anything about wine..."}
-          placeholderTextColor={theme.colors.text.tertiary}
-          multiline
-          editable={!isLoading && !isAnalyzing}
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, (!inputText.trim() || isLoading || isAnalyzing) && styles.sendButtonDisabled]}
-          onPress={handleSend}
-          disabled={!inputText.trim() || isLoading || isAnalyzing}
-        >
-          <Ionicons
-            name="send"
-            size={20}
-            color={inputText.trim() && !isLoading && !isAnalyzing ? theme.colors.primary[600] : theme.colors.text.tertiary}
-          />
-        </TouchableOpacity>
-      </View>
+      <ChatInput 
+        value={inputText}
+        onChangeText={setInputText}
+        onSend={handleSend}
+        onAttach={handleImagePick}
+        isLoading={isLoading || isAnalyzing}
+        placeholder={wine ? "Ask about this wine..." : "Ask me anything about wine..."}
+      />
 
       {showImagePicker && (
         <View style={styles.imagePickerModal}>
@@ -831,175 +705,75 @@ export function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#fefdfb', // theme.colors.background
   },
   header: {
+    paddingTop: 60,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    backgroundColor: '#faf8f4',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e8e3d8',
+    display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 60,
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    justifyContent: 'space-between',
   },
   backButton: {
-    marginRight: theme.spacing.md,
+    width: 40,
+    height: 40,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  headerContent: {
-    flex: 1,
+  cameraButton: {
+    width: 40,
+    height: 40,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    ...theme.typography.styles.cardTitle,
-    color: theme.colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'PlayfairDisplay_400Regular' : 'serif',
+    fontSize: 24,
+    fontWeight: '400' as any,
+    color: '#1c1915',
+    textAlign: 'center',
+    flex: 1,
   },
   headerSubtitle: {
     ...theme.typography.styles.bodySmall,
     color: theme.colors.text.secondary,
     marginTop: 2,
   },
-  imageContainer: {
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  wineListImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: theme.borderRadius.md,
-  },
   messagesContainer: {
     flex: 1,
   },
   messagesContent: {
-    padding: theme.spacing.md,
+    padding: 24,
+    paddingBottom: 120, // Extra padding to prevent overlap with ChatInput
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.spacing['3xl'],
+    paddingVertical: 60,
   },
   emptyText: {
     ...theme.typography.styles.bodyLarge,
     color: theme.colors.text.primary,
-    marginTop: theme.spacing.md,
+    marginTop: 32,
     textAlign: 'center',
   },
   emptySubtext: {
     ...theme.typography.styles.bodySmall,
     color: theme.colors.text.secondary,
-    marginTop: theme.spacing.xs,
+    marginTop: 16,
     textAlign: 'center',
   },
-  messageContainer: {
-    flexDirection: 'row',
-    marginBottom: theme.spacing.md,
-    alignItems: 'flex-start',
-  },
-  userMessage: {
-    justifyContent: 'flex-end',
-  },
-  assistantMessage: {
-    justifyContent: 'flex-start',
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: theme.spacing.xs,
-  },
-  messageBubble: {
-    maxWidth: '75%',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-  },
-  userBubble: {
-    backgroundColor: theme.colors.primary[600],
-  },
-  assistantBubble: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  messageText: {
-    ...theme.typography.styles.body,
-    lineHeight: Platform.OS === 'web' ? 24 : theme.typography.styles.body.lineHeight * 18,
-  },
-  userText: {
-    color: theme.colors.neutral[50],
-  },
-  assistantText: {
-    color: theme.colors.text.primary,
-  },
-  messageImageContainer: {
-    marginBottom: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    overflow: 'hidden',
-  },
-  messageImage: {
-    width: '100%',
-    maxHeight: 200,
-    borderRadius: theme.borderRadius.md,
-  },
-  viewResultsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    backgroundColor: theme.colors.primary[50],
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.primary[200],
-  },
-  viewResultsText: {
-    ...theme.typography.styles.bodySmall,
-    color: theme.colors.primary[600],
-    marginLeft: theme.spacing.xs,
-    fontWeight: '600',
-  },
-  loadingMessage: {
-    flexDirection: 'row',
-    marginBottom: theme.spacing.md,
-    alignItems: 'flex-start',
-  },
   loadingContainer: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    alignItems: 'flex-end',
-  },
-  imageButton: {
-    padding: theme.spacing.sm,
-    marginRight: theme.spacing.sm,
-  },
-  input: {
-    flex: 1,
-    ...theme.typography.styles.body,
-    color: theme.colors.text.primary,
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    maxHeight: 100,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  uploadedImage: {
-    width: 200,
-    height: 200,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.xs,
+    padding: 24,
   },
   analyzingContainer: {
     alignItems: 'center',
@@ -1007,13 +781,13 @@ const styles = StyleSheet.create({
   analyzingText: {
     ...theme.typography.styles.bodySmall,
     color: theme.colors.text.secondary,
-    marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.sm,
+    marginTop: 12,
+    marginBottom: 8,
   },
   processingSteps: {
     flexDirection: 'row',
-    gap: theme.spacing.xs,
-    marginTop: theme.spacing.xs,
+    gap: 4,
+    marginTop: 4,
   },
   stepDot: {
     width: 8,
@@ -1027,17 +801,30 @@ const styles = StyleSheet.create({
   thinkingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: 8,
   },
   thinkingDots: {
     flexDirection: 'row',
-    gap: theme.spacing.xs,
+    gap: 4,
   },
   thinkingDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: theme.colors.text.tertiary,
+  },
+  uploadedImageContainer: {
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#faf8f4',
+    padding: 16,
+    alignItems: 'center',
+  },
+  uploadedImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 8,
   },
   imagePickerModal: {
     position: 'absolute',
@@ -1084,12 +871,4 @@ const styles = StyleSheet.create({
     ...theme.typography.styles.body,
     color: theme.colors.text.secondary,
   },
-  sendButton: {
-    marginLeft: theme.spacing.sm,
-    padding: theme.spacing.md,
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
 });
-

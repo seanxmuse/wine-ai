@@ -69,7 +69,7 @@ export const colors = {
   surface: '#faf8f4',         // Light parchment cards
   surfaceElevated: '#ffffff', // Pure white for popups
   border: '#e8e3d8',          // Subtle gold-tinted border
-  divider: '#f5f2eb',
+  divider: '#e8e3d8',         // Match border color
 
   // Text
   text: {

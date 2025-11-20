@@ -69,3 +69,6 @@ The system prompt includes:
 - The model decides when to use web search based on the context
 - Search results are integrated into the response automatically
 
+
+
+

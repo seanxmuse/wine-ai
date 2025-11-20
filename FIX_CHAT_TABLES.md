@@ -59,3 +59,6 @@ After running the migration, verify in Supabase Dashboard:
 - Table Editor → Should see `chat_conversations` and `chat_messages`
 - SQL Editor → Run: `SELECT COUNT(*) FROM chat_conversations;` (should return 0, not an error)
 
+
+
+
