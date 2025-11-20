@@ -893,80 +893,79 @@ export function CameraScreen() {
             />
           )}
 
-          <View style={styles.overlay} pointerEvents="box-none">
-            {/* Header: Just Icons */}
-            <View style={styles.header}>
-              <View style={styles.headerTop}>
-                <TouchableOpacity
-                  style={styles.chatHistoryButton}
-                  onPress={() => (navigation as any).navigate('ChatHistory')}
-                >
-                  <Ionicons name="time-outline" size={24} color={theme.colors.neutral[50]} />
-                </TouchableOpacity>
-                
-                {/* Spacer to push settings to right */}
-                <View style={{ flex: 1 }} />
+          {/* Header: Just Icons - positioned absolutely, not in full-screen overlay */}
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <TouchableOpacity
+                style={styles.chatHistoryButton}
+                onPress={() => (navigation as any).navigate('ChatHistory')}
+              >
+                <Ionicons name="time-outline" size={24} color={theme.colors.neutral[50]} />
+              </TouchableOpacity>
+              
+              {/* Spacer to push settings to right */}
+              <View style={{ flex: 1 }} />
 
-                <TouchableOpacity
-                  style={styles.settingsButton}
-                  onPress={() => (navigation as any).navigate('Settings')}
-                >
-                  <Ionicons name="settings-outline" size={24} color={theme.colors.neutral[50]} />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.settingsButton}
+                onPress={() => (navigation as any).navigate('Settings')}
+              >
+                <Ionicons name="settings-outline" size={24} color={theme.colors.neutral[50]} />
+              </TouchableOpacity>
             </View>
+          </View>
 
-            {/* Center Content: Branding */}
-            <Animated.View 
-              style={[
-                styles.centerContent,
-                { 
-                  opacity: brandingOpacity,
-                  transform: [{ translateY: brandingPosition }]
-                }
-              ]}
-              pointerEvents="none"
-            >
-              <Ionicons name="wine" size={64} color={theme.colors.neutral[50]} style={{ marginBottom: theme.spacing.md }} />
-              <Text style={styles.mainTitle}>Wine Scanner</Text>
-              <Text style={styles.mainSubtitle}>
-                Scan any wine list to discover value
-              </Text>
+          {/* Center Content: Branding - positioned absolutely */}
+          <Animated.View 
+            style={[
+              styles.centerContent,
+              { 
+                opacity: brandingOpacity,
+                transform: [{ translateY: brandingPosition }]
+              }
+            ]}
+            pointerEvents="none"
+          >
+            <Ionicons name="wine" size={64} color={theme.colors.neutral[50]} style={{ marginBottom: theme.spacing.md }} />
+            <Text style={styles.mainTitle}>Wine Scanner</Text>
+            <Text style={styles.mainSubtitle}>
+              Scan any wine list to discover value
+            </Text>
+          </Animated.View>
+
+          {/* Controls - positioned absolutely at bottom */}
+          <View style={styles.controls}>
+            <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+              <TouchableOpacity
+                style={styles.libraryButton}
+                onPress={pickImage}
+                disabled={isProcessing}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="images-outline" size={28} color={theme.colors.neutral[50]} />
+              </TouchableOpacity>
             </Animated.View>
 
-            <View style={styles.controls}>
-              <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-                <TouchableOpacity
-                  style={styles.libraryButton}
-                  onPress={pickImage}
-                  disabled={isProcessing}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="images-outline" size={28} color={theme.colors.neutral[50]} />
-                </TouchableOpacity>
-              </Animated.View>
+            <TouchableOpacity
+              style={[styles.captureButton, isProcessing && styles.captureButtonDisabled]}
+              onPress={takePicture}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <ActivityIndicator size="large" color={theme.colors.gold[500]} />
+              ) : (
+                <View style={styles.captureButtonInner} />
+              )}
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.captureButton, isProcessing && styles.captureButtonDisabled]}
-                onPress={takePicture}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <ActivityIndicator size="large" color={theme.colors.gold[500]} />
-                ) : (
-                  <View style={styles.captureButtonInner} />
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.chatButton}
-                onPress={() => (navigation as any).navigate('Chat', {
-                    conversationId: routeConversationId || activeConversationId
-                })}
-              >
-                <Ionicons name="chatbubbles-outline" size={28} color={theme.colors.neutral[50]} />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.chatButton}
+              onPress={() => (navigation as any).navigate('Chat', {
+                  conversationId: routeConversationId || activeConversationId
+              })}
+            >
+              <Ionicons name="chatbubbles-outline" size={28} color={theme.colors.neutral[50]} />
+            </TouchableOpacity>
           </View>
         </CameraView>
 
@@ -1023,12 +1022,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent', // Completely transparent - no background to block camera
-    zIndex: 1, // Ensure UI elements are above camera feed
-  },
   header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     paddingTop: Platform.OS === 'web' ? 40 : 60,
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.lg,
@@ -1089,10 +1087,15 @@ const styles = StyleSheet.create({
   },
   // New Center Content Styles
   centerContent: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.xl,
+    pointerEvents: 'none',
     // Gap support in RN Web can be flaky, rely on margins instead
     // gap: theme.spacing.md, 
   },
@@ -1127,12 +1130,17 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing['2xl'],
   },
   controls: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.xl,
     paddingBottom: Platform.OS === 'web' ? theme.spacing['2xl'] : theme.spacing['3xl'],
     paddingTop: theme.spacing.lg,
+    zIndex: 100,
   },
   libraryButton: {
     width: 64,
