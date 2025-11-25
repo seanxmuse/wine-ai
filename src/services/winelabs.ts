@@ -226,8 +226,56 @@ export async function matchWinesToLwin(
 
     return enhancedResults;
   } catch (error) {
-    console.error('Error matching wines to LWIN:', error);
-    throw error;
+    // Wine Labs API failed completely (503, timeout, network error, etc.)
+    // Fall back to web search for ALL wines
+    console.error('[WineLabs] API failed completely, falling back to web search for all wines:', error);
+
+    try {
+      const winesForSearch = queries.map(q => ({
+        name: q,
+        vintage: undefined, // Could extract vintage from query if needed
+      }));
+
+      const webSearchResults = await searchMultipleWinesOnWeb(winesForSearch);
+
+      // Convert web search results to Wine Labs response format
+      const fallbackResults = webSearchResults.map((webResult, index) => {
+        const hasMatch = webResult.confidence > 30;
+
+        if (hasMatch) {
+          console.log(`[WineLabs] Web search fallback found: ${webResult.wineName} (confidence: ${webResult.confidence})`);
+        }
+
+        return {
+          display_name: webResult.wineName,
+          vintage: webResult.vintage,
+          varietal: webResult.varietal,
+          region: webResult.region,
+          webSearchPrice: webResult.averagePrice,
+          webSearchSource: webResult.priceSource,
+          dataSource: 'web-search' as const,
+          matched: hasMatch,
+          confidence: webResult.confidence / 100, // Convert to 0-1 scale
+          originalQuery: queries[index],
+        };
+      });
+
+      const webMatchCount = fallbackResults.filter(r => r.matched).length;
+      console.log(`[WineLabs] Web search fallback matched ${webMatchCount}/${queries.length} wines`);
+
+      return fallbackResults;
+    } catch (webSearchError) {
+      // Both Wine Labs and web search failed - return empty results
+      console.error('[WineLabs] Web search fallback also failed:', webSearchError);
+
+      // Return minimal results so the app doesn't crash
+      return queries.map(q => ({
+        matched: false,
+        confidence: 0,
+        originalQuery: q,
+        dataSource: 'web-search' as const,
+      }));
+    }
   }
 }
 

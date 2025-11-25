@@ -2,28 +2,61 @@
 
 ## [Unreleased]
 
+### Added
+- **Cursor Documentation** 📝
+  - Created `cursor/cursor.md` to document AI guidelines and project context
+
 ### Fixed
-- **Blank Square in Chat Screen from Results** 🔧
-  - Fixed blank image container showing incorrectly when navigating from Results to Chat
-  - Root cause: `uploadedImageContainer` was showing even when messages already existed
-  - Changed condition to only show image container when actively analyzing (no messages yet)
-  - Added safeguard in ChatBubble to skip rendering completely empty assistant messages
+- **UI Improvements** 🎨
+  - Fixed text cutoff issues on Chat screens by implementing responsive typography scaling
+  - Restored scanning animation on Camera screen (Web)
+  - Fixed Gallery icon visibility and positioning in Camera header
+  - Resolved TypeScript errors in SimpleCameraWeb component
+- **Camera Screen Opacity and Animation Issues on Mobile** 📱
+  - Fixed camera screen remaining opaque after granting permissions
+  - Fixed camera feed not visible due to dark container background blocking the view
+  - Changed container background from dark color to transparent to allow camera feed to show through
+  - Fixed CameraView styling to use absoluteFill for proper rendering
+  - Fixed intro animation not triggering when camera permission is granted
+  - Improved animation state management with `shouldShowCamera` state variable
+  - Fixed overlay opacity animation to properly fade out and reveal camera feed
+  - Removed conflicting background color from overlay styles
+  - Animation now uses native driver for better performance on mobile
+  - Animation values now properly reset when permission state changes
+- **Camera Permission Prompt Not Appearing on iPhone** 📱
+  - Fixed iOS camera permission prompt not showing when tapping "Grant Permission" button
+  - Improved permission state handling to properly check `canAskAgain` status
+  - Added proper handling for permanently denied permissions (directs to Settings)
+  - Added debug logging to track permission state changes
+  - Enhanced error handling with better user feedback and Settings redirect
+  - Permission prompt now properly triggers iOS system dialog on first request
+- **Post-Capture Preview Screen** 📸
+  - Added dedicated "Retake" button alongside "Send" button in preview screen
+  - Changed "Analyze" button text to "Send" for clarity
+  - Preview actions now show both Retake and Send buttons side-by-side
+  - Improved preview screen layout with proper button spacing
+- **Chat State Preservation** 💬
+  - Fixed navigation to preserve chat conversation when switching between Chat ↔ Camera modes
+  - ChatScreen now passes conversationId when navigating to Camera
+  - CameraScreen now uses routeConversationId when navigating back to Chat
+  - Users can now seamlessly switch between modes without losing their conversation
 
-- **Chat Message Disappearing When Sending** 💬
-  - Fixed issue where typing a message would cause it to disappear without feedback
-  - Root cause: Error from sendChatMessage was removing the user's message
-  - Now keeps the user's message visible even on error
-  - Adds an error message from assistant showing what went wrong
-  - Added `window.alert` fallback for web platform (Alert.alert doesn't work well on web)
-  - Added extensive console logging to help debug message flow
+### Changed
+- **Documentation Layout** 📚
+  - Organize most `.md` docs under `docs/` with dedicated subfolders for getting-started, architecture, testing, and reference materials
+  - Root `README.md` now orients readers toward `docs/`, while the detailed project overview lives at `docs/reference/README.md`
+  - Keeps documentation discoverable alongside the app code without crowding the repo root
 
-- **Results to Chat Navigation Showing Blank Screen** 🔧
-  - Fixed issue where clicking Chat button from Results page showed blank/empty chat
-  - Root cause: Conversation was created but messages were not saved to database
-  - Now saves user message "Analyze this wine list" with image before navigating to Results
-  - Now saves formatted assistant message with wine analysis before navigating to Results
-  - Results screen now passes wines data to Chat screen for proper wine card rendering
-  - Chat experience from Results now matches the in-chat image upload flow
+### Changed
+- **Auxiliary files archived** 📦
+  - Moved the `.env.*` templates into `archives/configuration/` to highlight that they’re reference-only
+  - Shifted previous Expo/serve logs into `archives/logs/` so the repo root stays tidy
+  - Relocated `clear-onboarding.js` and `list-models.js` into `archives/legacy-scripts/` for occasional reference
+
+### Changed
+- **Test helpers grouped** 🧪
+  - Created `scripts/tests/` and moved the `test-*` debug scripts (Gemini, Wine Labs, web search helpers) out of the root
+  - `README.md` and `docs/architecture/FOLDER_ROLES.md` now describe where to find those helpers for manual testing
 
 ### Added
 - **Camera Permission Skip Button** 📷
@@ -163,7 +196,14 @@
 - Updated Wine data types to track data source and confidence scores
 
 ### Deployed
-- ✅ **Latest**: https://wine-scanner-c7o05wq8l-seanxmuses-projects.vercel.app (Nov 18, 2025)
+- ✅ **Latest**: https://wine-scanner-kebx712rw-seanxmuses-projects.vercel.app (Nov 21, 2025)
+  - Fixed Chat screen text cutoff (responsive design)
+  - Restored Camera scanning animation
+  - Fixed Camera gallery icon
+  - Hidden iOS Status Bar
+  - Updated Chat UI (attachment icon, simplified picker)
+  - Fixed Onboarding centering issues
+- Previous: https://wine-scanner-c7o05wq8l-seanxmuses-projects.vercel.app (Nov 18, 2025)
   - **New**: Web search fallback with Gemini for unmatched wines
   - Includes favicon/logo implementation
   - Fixed login screen text overlap issues

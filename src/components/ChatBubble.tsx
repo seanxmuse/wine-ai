@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, Platform, TouchableOpacity } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme';
+import { theme, rf, rs } from '../theme';
 import { ChatWineCard } from './ChatWineCard';
 import type { Wine, ChatMessage } from '../types';
 
@@ -15,6 +15,14 @@ interface ChatBubbleProps {
 export function ChatBubble({ message, wines, onWinePress }: ChatBubbleProps) {
   const isUser = message.role === 'user';
   const hasWines = wines && wines.length > 0;
+  const hasContent = message.content && message.content.trim().length > 0;
+  const hasImage = !!message.imageUrl;
+
+  // Don't render empty assistant messages (no content, no wines, no image)
+  if (!isUser && !hasContent && !hasWines && !hasImage) {
+    console.warn('[ChatBubble] Skipping empty assistant message:', message.id);
+    return null;
+  }
 
   return (
     <View style={[
@@ -61,23 +69,23 @@ export function ChatBubble({ message, wines, onWinePress }: ChatBubbleProps) {
               style={{
                 body: {
                   color: '#1c1915', // theme.colors.text.primary
-                  fontSize: 18,
-                  lineHeight: 26, // relaxed line height
+                  fontSize: rf(16),
+                  lineHeight: rf(24), // relaxed line height
                   fontFamily: Platform.OS === 'ios' ? 'CrimsonPro_400Regular' : 'serif',
                 },
                 heading2: {
                   color: '#1c1915',
-                  fontSize: 22,
+                  fontSize: rf(20),
                   fontFamily: Platform.OS === 'ios' ? 'PlayfairDisplay_400Regular' : 'serif',
-                  marginTop: 12,
-                  marginBottom: 8,
+                  marginTop: rs(12),
+                  marginBottom: rs(8),
                 },
                 bullet_list: {
-                  marginTop: 8,
-                  marginBottom: 8,
+                  marginTop: rs(8),
+                  marginBottom: rs(8),
                 },
                 paragraph: {
-                  marginBottom: 12,
+                  marginBottom: rs(12),
                 },
               }}
             >
@@ -101,7 +109,7 @@ export function ChatBubble({ message, wines, onWinePress }: ChatBubbleProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: rs(16),
     width: '100%',
   },
   userContainer: {
@@ -111,25 +119,25 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: rs(32),
+    height: rs(32),
+    borderRadius: rs(16),
     backgroundColor: '#faf8f4',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
-    marginTop: 4,
+    marginRight: rs(8),
+    marginTop: rs(4),
   },
   bubble: {
     maxWidth: '80%',
-    padding: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 20,
+    padding: rs(16),
+    paddingVertical: rs(16),
+    paddingHorizontal: rs(20),
+    borderRadius: rs(20),
   },
   userBubble: {
     backgroundColor: '#d4af37', // Gold fallback since no linear-gradient
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: rs(4),
     ...(Platform.OS === 'web' && {
       background: 'linear-gradient(135deg, #d4af37 0%, #b8942f 100%)' as any,
     }),
@@ -138,28 +146,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#faf8f4',
     borderWidth: 1,
     borderColor: '#e8e3d8',
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: rs(4),
   },
   userText: {
     color: '#1c1915',
-    fontSize: 18,
-    lineHeight: 1.6,
+    fontSize: rf(16),
+    lineHeight: rf(24),
     fontFamily: Platform.OS === 'ios' ? 'CrimsonPro_400Regular' : 'serif',
   },
   imageContainer: {
-    marginBottom: 12,
-    borderRadius: 12,
+    marginBottom: rs(12),
+    borderRadius: rs(12),
     overflow: 'hidden',
     backgroundColor: '#fff',
   },
   messageImage: {
     width: '100%',
-    height: 200,
-    borderRadius: 12,
+    height: rs(200),
+    borderRadius: rs(12),
   },
   timestamp: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: rf(11),
+    marginTop: rs(4),
     fontFamily: Platform.OS === 'ios' ? 'CrimsonPro_400Regular' : 'serif',
     fontWeight: '200' as any,
   },

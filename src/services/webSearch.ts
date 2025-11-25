@@ -21,6 +21,7 @@ export interface WebSearchCriticScore {
   critic: string;
   score: number;
   source?: string;
+  sourceUrl?: string;
   vintage?: string;
 }
 
@@ -257,16 +258,28 @@ export async function searchCriticScoresOnWeb(
 
     const searchQuery = vintage ? `${wineName} ${vintage}` : wineName;
 
-    const prompt = `Find critic scores and ratings for "${searchQuery}" wine. Search Wine Spectator, Robert Parker, Wine Enthusiast, Decanter, James Suckling, and other wine critics. Return JSON array only:
+    // More flexible prompt that accepts ANY reputable wine rating
+    const prompt = `Find ANY available critic scores or ratings for "${searchQuery}" wine. Search for ratings from:
+
+Wine Spectator, Robert Parker (Wine Advocate), Wine Enthusiast, Decanter, James Suckling, Wine Searcher, Jancis Robinson, Vinous, or ANY other reputable wine publication.
+
+Return the BEST/HIGHEST score you can find. If multiple scores exist, include the highest one. Return JSON array:
 [
   {
-    "critic": "critic name (e.g., 'Robert Parker', 'Wine Spectator')",
+    "critic": "critic or publication name",
     "score": number (0-100 scale),
     "source": "publication name",
+    "sourceUrl": "Wine Searcher URL or source URL if found",
     "vintage": "year or null"
   }
 ]
-If no scores found, return empty array []. Only include scores from reputable wine critics/publications.`;
+
+IMPORTANT:
+- If you find aggregate scores (like Wine Searcher average), use those
+- Accept scores in any format and convert to 0-100 scale
+- If score is out of 20, multiply by 5. If out of 5, multiply by 20
+- Return empty array [] ONLY if absolutely no ratings exist anywhere
+- Try Wine Searcher first as it aggregates multiple sources`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -294,7 +307,7 @@ If no scores found, return empty array []. Only include scores from reputable wi
             temperature: 0.2,
             topK: 1,
             topP: 0.8,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 8192, // Increased from 2048 to allow more search results
           },
         }),
       }
@@ -340,12 +353,16 @@ If no scores found, return empty array []. Only include scores from reputable wi
       return [];
     }
 
+    // Generate a fallback Wine Searcher URL for the wine
+    const wineSearcherUrl = generateWineSearcherUrl(wineName, vintage);
+
     const scores: WebSearchCriticScore[] = parsedData
       .filter((item: any) => item.critic && typeof item.score === 'number' && item.score > 0)
       .map((item: any) => ({
         critic: item.critic,
         score: Math.min(100, Math.max(0, item.score)), // Clamp to 0-100
-        source: item.source,
+        source: item.source || 'Wine Searcher',
+        sourceUrl: item.sourceUrl || wineSearcherUrl, // Use provided URL or fallback to Wine Searcher search
         vintage: item.vintage || vintage,
       }));
 
@@ -359,4 +376,16 @@ If no scores found, return empty array []. Only include scores from reputable wi
     console.error('[WebSearch] Error searching for critic scores:', error);
     return [];
   }
+}
+
+/**
+ * Generate a Wine Searcher URL for a wine
+ * @param wineName - The wine name
+ * @param vintage - Optional vintage year
+ * @returns Wine Searcher search URL
+ */
+function generateWineSearcherUrl(wineName: string, vintage?: string): string {
+  const query = vintage ? `${wineName} ${vintage}` : wineName;
+  const encodedQuery = encodeURIComponent(query);
+  return `https://www.wine-searcher.com/find/${encodedQuery.replace(/%20/g, '+')}`;
 }

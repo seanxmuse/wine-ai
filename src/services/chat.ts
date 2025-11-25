@@ -5,6 +5,63 @@ import { matchWinesToLwin, getPriceStats, getCriticScores, getWineInfo } from '.
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
 
 /**
+ * Format a date into a friendly chat title format
+ * - Same day: "Today 2:30 PM"
+ * - Yesterday: "Yesterday 2:30 PM"
+ * - This week: "Monday 2:30 PM"
+ * - Older: "Jan 21 2:30 PM"
+ */
+function formatChatDateTime(date: Date): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  const time = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  // Same day
+  if (date >= today) {
+    return `Today ${time}`;
+  }
+
+  // Yesterday
+  if (date >= yesterday) {
+    return `Yesterday ${time}`;
+  }
+
+  // This week
+  if (date >= weekAgo) {
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+    return `${dayName} ${time}`;
+  }
+
+  // Older
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const day = date.getDate();
+  return `${month} ${day} ${time}`;
+}
+
+/**
+ * Get a preview of the first message (truncated to 50 chars)
+ */
+function getFirstMessagePreview(message: string): string {
+  // Strip newlines and extra whitespace
+  const cleaned = message.replace(/\s+/g, ' ').trim();
+
+  if (cleaned.length <= 50) {
+    return cleaned;
+  }
+
+  return cleaned.substring(0, 47) + '...';
+}
+
+/**
  * Create a new general chat conversation (not wine-specific)
  */
 export async function createGeneralChatConversation(
@@ -15,12 +72,15 @@ export async function createGeneralChatConversation(
     throw new Error('User not authenticated');
   }
 
+  // Use datetime as initial title (will be replaced by AI or first message later)
+  const initialTitle = formatChatDateTime(new Date());
+
   const { data, error } = await supabase
     .from('chat_conversations')
     .insert({
       user_id: session.session.user.id,
       image_url: imageUrl,
-      title: 'New Chat',
+      title: initialTitle,
     })
     .select()
     .single();
@@ -610,30 +670,55 @@ export async function deleteChatConversation(conversationId: string): Promise<vo
 
 /**
  * Generate a chat title using AI based on first message or wine list
+ * Falls back to first message preview or datetime if AI fails
  */
 export async function generateChatTitle(
   conversationId: string,
   firstMessage?: string,
   wines?: Wine[]
 ): Promise<string> {
+  // Fallback hierarchy helper
+  const getFallbackTitle = (): string => {
+    if (firstMessage) {
+      return getFirstMessagePreview(firstMessage);
+    }
+    return formatChatDateTime(new Date());
+  };
+
   if (!GEMINI_API_KEY) {
-    return 'New Chat';
+    console.warn('[Chat] No Gemini API key, using fallback title');
+    const fallbackTitle = getFallbackTitle();
+    await supabase
+      .from('chat_conversations')
+      .update({ title: fallbackTitle })
+      .eq('id', conversationId);
+    return fallbackTitle;
   }
 
   let prompt = 'Generate a short, descriptive title (max 50 characters) for this wine chat conversation. ';
-  
+
   if (wines && wines.length > 0) {
     const wineNames = wines.slice(0, 3).map(w => w.displayName).join(', ');
     prompt += `The conversation is about analyzing a wine list with: ${wineNames}${wines.length > 3 ? ' and more' : ''}.`;
   } else if (firstMessage) {
     prompt += `The first user message is: "${firstMessage.substring(0, 200)}"`;
   } else {
-    return 'New Chat';
+    // No content to generate title from, use datetime
+    const fallbackTitle = formatChatDateTime(new Date());
+    await supabase
+      .from('chat_conversations')
+      .update({ title: fallbackTitle })
+      .eq('id', conversationId);
+    return fallbackTitle;
   }
 
   prompt += '\n\nReturn ONLY the title text, no quotes, no explanation. Keep it under 50 characters.';
 
   try {
+    // Add timeout to AI request (5 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
@@ -652,19 +737,38 @@ export async function generateChatTitle(
             maxOutputTokens: 50,
           },
         }),
+        signal: controller.signal,
       }
     );
 
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
-      return 'New Chat';
+      console.warn('[Chat] AI title generation failed, using fallback');
+      const fallbackTitle = getFallbackTitle();
+      await supabase
+        .from('chat_conversations')
+        .update({ title: fallbackTitle })
+        .eq('id', conversationId);
+      return fallbackTitle;
     }
 
     const data = await response.json();
-    const title = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'New Chat';
-    
+    const title = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    if (!title || title.length === 0) {
+      console.warn('[Chat] AI returned empty title, using fallback');
+      const fallbackTitle = getFallbackTitle();
+      await supabase
+        .from('chat_conversations')
+        .update({ title: fallbackTitle })
+        .eq('id', conversationId);
+      return fallbackTitle;
+    }
+
     // Ensure title is max 50 chars
     const finalTitle = title.length > 50 ? title.substring(0, 47) + '...' : title;
-    
+
     // Update conversation title
     await supabase
       .from('chat_conversations')
@@ -673,8 +777,13 @@ export async function generateChatTitle(
 
     return finalTitle;
   } catch (error) {
-    console.error('Error generating chat title:', error);
-    return 'New Chat';
+    console.error('[Chat] Error generating chat title:', error);
+    const fallbackTitle = getFallbackTitle();
+    await supabase
+      .from('chat_conversations')
+      .update({ title: fallbackTitle })
+      .eq('id', conversationId);
+    return fallbackTitle;
   }
 }
 

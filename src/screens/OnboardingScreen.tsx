@@ -52,7 +52,6 @@ const slides: OnboardingSlide[] = [
 export function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
   const iconScale = useRef(new Animated.Value(0.8)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
 
@@ -75,15 +74,10 @@ export function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
 
   const handleNext = () => {
     if (currentSlide < slides.length - 1) {
-      // Fade out and slide
+      // Fade out
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: -width * 0.1,
           duration: 200,
           useNativeDriver: true,
         }),
@@ -94,16 +88,10 @@ export function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
         }),
       ]).start(() => {
         setCurrentSlide(currentSlide + 1);
-        slideAnim.setValue(width * 0.1);
         // Fade in new slide
         Animated.parallel([
           Animated.timing(fadeAnim, {
             toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(slideAnim, {
-            toValue: 0,
             duration: 300,
             useNativeDriver: true,
           }),
@@ -160,7 +148,6 @@ export function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
               styles.slideContainer,
               {
                 opacity: fadeAnim,
-                transform: [{ translateX: slideAnim }],
               },
             ]}
           >
@@ -172,7 +159,7 @@ export function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
                 { transform: [{ scale: iconScale }] },
               ]}
             >
-              <Ionicons name={slide.icon as any} size={80} color={slide.color} />
+              <Ionicons name={slide.icon as any} size={Platform.OS === 'web' ? 70 : 50} color={slide.color} />
             </Animated.View>
 
             {/* Title */}
@@ -259,7 +246,7 @@ const styles = StyleSheet.create({
       flexDirection: 'column' as any,
       alignItems: 'center' as any,
       justifyContent: 'center' as any,
-      width: '100vw' as any,
+      width: '100%' as any,
       margin: '0' as any,
       padding: '0' as any,
       boxSizing: 'border-box' as any,
@@ -285,72 +272,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    paddingHorizontal: theme.spacing.lg,
-    ...(Platform.OS === 'web' && {
-      display: 'flex' as any,
-      flexDirection: 'column' as any,
-      alignItems: 'center' as any,
-      justifyContent: 'center' as any,
-      width: '100%' as any,
-      boxSizing: 'border-box' as any,
-      margin: '0' as any,
-      padding: '0 24px' as any,
-    }),
   },
   iconContainer: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: Platform.OS === 'web' ? 140 : 100,
+    height: Platform.OS === 'web' ? 140 : 100,
+    borderRadius: Platform.OS === 'web' ? 70 : 50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing['3xl'],
-    alignSelf: 'center',
+    marginBottom: theme.spacing.xl,
+    marginHorizontal: 'auto',
     ...(Platform.OS === 'web' && {
       boxShadow: '0 8px 24px rgba(0, 0, 0, 0.1)' as any,
-      display: 'flex' as any,
-      alignItems: 'center' as any,
-      justifyContent: 'center' as any,
-      marginLeft: '0' as any,
-      marginRight: '0' as any,
-      paddingLeft: '0' as any,
-      paddingRight: '0' as any,
     }),
   },
   title: {
     ...theme.typography.styles.heroTitle,
     color: theme.colors.text.primary,
     textAlign: 'center',
-    fontSize: Platform.OS === 'web' ? 36 : theme.typography.sizes['3xl'],
-    marginBottom: theme.spacing.lg,
-    width: '100%',
+    fontSize: Platform.OS === 'web' ? 28 : 20,
+    marginBottom: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
     ...(Platform.OS === 'web' && {
-      textAlign: 'center' as any,
-      display: 'block' as any,
-      width: '100%' as any,
-      marginLeft: '0' as any,
-      marginRight: '0' as any,
-      paddingLeft: '0' as any,
-      paddingRight: '0' as any,
-      boxSizing: 'border-box' as any,
+      lineHeight: '1.2' as any,
     }),
   },
   description: {
     ...theme.typography.styles.body,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-    lineHeight: Platform.OS === 'web' ? 28 : 24,
-    fontSize: Platform.OS === 'web' ? 18 : theme.typography.sizes.base,
-    maxWidth: 400,
-    width: '100%',
-    ...(Platform.OS === 'web' && {
-      textAlign: 'center' as any,
-      display: 'block' as any,
-      marginLeft: 'auto' as any,
-      marginRight: 'auto' as any,
-      width: '100%' as any,
-      maxWidth: '400px' as any,
-      boxSizing: 'border-box' as any,
-    }),
+    lineHeight: Platform.OS === 'web' ? 24 : 20,
+    fontSize: Platform.OS === 'web' ? 15 : 14,
+    maxWidth: 350,
+    paddingHorizontal: theme.spacing.lg,
   },
   pagination: {
     flexDirection: 'row',

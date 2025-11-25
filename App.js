@@ -24,7 +24,6 @@ import { theme } from './src/theme';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { CameraScreen } from './src/screens/CameraScreen';
 import { ResultsScreen } from './src/screens/ResultsScreen';
-import { NewResultsScreen } from './src/screens/NewResultsScreen';
 import { ChatScreen } from './src/screens/ChatScreen';
 import { ChatHistoryScreen } from './src/screens/ChatHistoryScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
@@ -88,8 +87,13 @@ export default function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
+      // Only reset onboarding on SIGNED_UP event (new account creation)
+      if (_event === 'SIGNED_UP') {
+        await AsyncStorage.removeItem('onboarding_completed');
+        setOnboardingCompleted(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -117,42 +121,55 @@ export default function App() {
     );
   }
 
-  const AppContent = () => (
-    <ActiveConversationProvider>
-      <NavigationContainer>
-        <StatusBar style="dark" />
-        <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-          animation: Platform.OS === 'web' ? 'none' : 'default',
-          contentStyle: { 
-            backgroundColor: theme.colors.background,
-            ...(Platform.OS === 'web' ? {
-              position: 'relative',
-              zIndex: 1,
-              width: '100%',
-              height: '100%',
-              // Smooth transitions handled by CSS
-            } : {}),
-          },
-        }}
-      >
-        {!session ? (
-          <Stack.Screen name="Auth" component={AuthScreen} />
-        ) : (
-          <>
-            <Stack.Screen name="Camera" component={CameraScreen} />
-            <Stack.Screen name="Results" component={ResultsScreen} />
-            <Stack.Screen name="NewResults" component={NewResultsScreen} />
-            <Stack.Screen name="Chat" component={ChatScreen} />
-            <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} />
-            <Stack.Screen name="Settings" component={SettingsScreen} />
-          </>
-        )}
-      </Stack.Navigator>
-      </NavigationContainer>
-    </ActiveConversationProvider>
-  );
+  const AppContent = () => {
+    // Set document title for PWA (web only)
+    useEffect(() => {
+      if (Platform.OS === 'web') {
+        document.title = 'Wine Scanner';
+      }
+    }, []);
+
+    return (
+      <ActiveConversationProvider>
+        <NavigationContainer
+          documentTitle={{
+            enabled: false, // Disable automatic title updates from screen names
+          }}
+        >
+          <StatusBar hidden={Platform.OS === 'ios'} style={Platform.OS === 'ios' ? 'light' : 'dark'} />
+          <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            animation: Platform.OS === 'web' ? 'none' : 'default',
+            title: 'Wine Scanner', // Set default title for all screens
+            contentStyle: {
+              backgroundColor: theme.colors.background,
+              ...(Platform.OS === 'web' ? {
+                position: 'relative',
+                zIndex: 1,
+                width: '100%',
+                height: '100%',
+                // Smooth transitions handled by CSS
+              } : {}),
+            },
+          }}
+        >
+          {!session ? (
+            <Stack.Screen name="Auth" component={AuthScreen} options={{ title: 'Wine Scanner' }} />
+          ) : (
+            <>
+              <Stack.Screen name="Camera" component={CameraScreen} options={{ title: 'Wine Scanner' }} />
+              <Stack.Screen name="Results" component={ResultsScreen} options={{ title: 'Wine Scanner' }} />
+              <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Wine Scanner' }} />
+              <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} options={{ title: 'Wine Scanner' }} />
+              <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Wine Scanner' }} />
+            </>
+          )}
+        </Stack.Navigator>
+        </NavigationContainer>
+      </ActiveConversationProvider>
+    );
+  };
 
   return (
     <SafeAreaProvider>

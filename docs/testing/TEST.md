@@ -61,7 +61,7 @@ When ready to set up real backend:
    import { supabase } from './src/services/supabase';
    ```
 
-2. Follow [SETUP.md](SETUP.md) to configure Supabase
+2. Follow [SETUP.md](../getting-started/SETUP.md) to configure Supabase
 
 ## Troubleshooting
 

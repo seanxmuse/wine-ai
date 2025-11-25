@@ -11,6 +11,7 @@ import {
   Platform,
   Animated,
   Image,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
@@ -220,130 +221,136 @@ export function AuthScreen() {
 
   return (
     <Container {...containerProps}>
-      <View style={styles.content}>
-        {/* Logo/Title */}
-        <View style={styles.header}>
-          <Image
-            source={require('../../public/favicon.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.title}>Wine Scanner</Text>
-          <Text style={styles.subtitle}>
-            Discover the best wines on any list
-          </Text>
-        </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          {/* Logo/Title */}
+          <View style={styles.header}>
+            <Image
+              source={require('../../public/favicon.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={styles.title}>Wine Scanner</Text>
+            <Text style={styles.subtitle}>
+              Discover the best wines on any list
+            </Text>
+          </View>
 
-        {/* Error Banner */}
-        {error && (
+          {/* Error Banner */}
+          {error && (
+            <Animated.View
+              style={[
+                styles.errorBanner,
+                {
+                  opacity: errorOpacity,
+                  transform: [
+                    { translateY: errorTranslateY },
+                    { translateX: inputShake },
+                  ],
+                },
+              ]}
+            >
+              <Ionicons name="alert-circle" size={20} color={theme.colors.error} style={styles.errorIcon} />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity onPress={hideError} style={styles.errorClose}>
+                <Ionicons name="close" size={18} color={theme.colors.text.secondary} />
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
+          {/* Form */}
           <Animated.View
             style={[
-              styles.errorBanner,
+              styles.form,
               {
-                opacity: errorOpacity,
-                transform: [
-                  { translateY: errorTranslateY },
-                  { translateX: inputShake },
-                ],
+                transform: [{ scale: formScale }, { translateX: inputShake }],
               },
             ]}
           >
-            <Ionicons name="alert-circle" size={20} color={theme.colors.error} style={styles.errorIcon} />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity onPress={hideError} style={styles.errorClose}>
-              <Ionicons name="close" size={18} color={theme.colors.text.secondary} />
-            </TouchableOpacity>
-          </Animated.View>
-        )}
+            {!isLogin && (
+              <TextInput
+                style={styles.input}
+                placeholder="First Name"
+                placeholderTextColor={theme.colors.text.tertiary}
+                value={firstName}
+                onChangeText={setFirstName}
+                autoCapitalize="words"
+                editable={!loading}
+              />
+            )}
 
-        {/* Form */}
-        <Animated.View
-          style={[
-            styles.form,
-            {
-              transform: [{ scale: formScale }, { translateX: inputShake }],
-            },
-          ]}
-        >
-          {!isLogin && (
             <TextInput
               style={styles.input}
-              placeholder="First Name"
+              placeholder="Email"
               placeholderTextColor={theme.colors.text.tertiary}
-              value={firstName}
-              onChangeText={setFirstName}
-              autoCapitalize="words"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
               editable={!loading}
             />
-          )}
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            editable={!loading}
-          />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor={theme.colors.text.tertiary}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              editable={!loading}
+            />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            editable={!loading}
-          />
+            <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleAuth}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                {loading ? (
+                  <ActivityIndicator color={theme.colors.neutral[50]} />
+                ) : (
+                  <View style={styles.buttonContent}>
+                    <Text style={styles.buttonText}>
+                      {isLogin ? 'Sign In' : 'Sign Up'}
+                    </Text>
+                    <Ionicons
+                      name={isLogin ? 'log-in-outline' : 'person-add-outline'}
+                      size={20}
+                      color={theme.colors.neutral[50]}
+                      style={styles.buttonIcon}
+                    />
+                  </View>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
 
-          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleAuth}
+              style={styles.toggleButton}
+              onPress={() => {
+                setIsLogin(!isLogin);
+                // Clear firstName when switching to login
+                if (!isLogin) {
+                  setFirstName('');
+                }
+              }}
               disabled={loading}
-              activeOpacity={0.8}
             >
-              {loading ? (
-                <ActivityIndicator color={theme.colors.neutral[50]} />
-              ) : (
-                <View style={styles.buttonContent}>
-                  <Text style={styles.buttonText}>
-                    {isLogin ? 'Sign In' : 'Sign Up'}
-                  </Text>
-                  <Ionicons
-                    name={isLogin ? 'log-in-outline' : 'person-add-outline'}
-                    size={20}
-                    color={theme.colors.neutral[50]}
-                    style={styles.buttonIcon}
-                  />
-                </View>
-              )}
+              <Text style={styles.toggleText}>
+                {isLogin
+                  ? "Don't have an account? Sign Up"
+                  : 'Already have an account? Sign In'}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
 
-          <TouchableOpacity
-            style={styles.toggleButton}
-            onPress={() => {
-              setIsLogin(!isLogin);
-              // Clear firstName when switching to login
-              if (!isLogin) {
-                setFirstName('');
-              }
-            }}
-            disabled={loading}
-          >
-            <Text style={styles.toggleText}>
-              {isLogin
-                ? "Don't have an account? Sign Up"
-                : 'Already have an account? Sign In'}
-            </Text>
-          </TouchableOpacity>
-        </Animated.View>
-
-      </View>
+        </View>
+      </ScrollView>
     </Container>
   );
 }
@@ -357,12 +364,17 @@ const styles = StyleSheet.create({
       width: '100%' as any,
       position: 'relative' as any,
       zIndex: 1,
-      overflow: 'auto' as any,
     } : {}),
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    paddingVertical: theme.spacing.xl,
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh' as any,
+    }),
+  },
+  content: {
     paddingHorizontal: theme.spacing.xl,
     ...(Platform.OS === 'web' && {
       position: 'relative' as any,

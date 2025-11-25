@@ -189,6 +189,21 @@ Now TypeScript knows what a `Wine` object should look like!
 
 ---
 
+## 🧪 **`scripts/tests/` - Manual Test Helpers**
+**Role:** Houses ad-hoc test runners (the `test-*` scripts) that run outside the React app so you can verify Wine Labs, Gemini, and web search functionality on demand.
+
+| File | What It Does |
+|------|--------------|
+| `test-basic-gemini.js` | Exercises Gemini vision/chat prompts against quick samples |
+| `test-chat-web-search.js` | Validates the chat web search grounding |
+| `test-wine-search.js` | Hits Wine Labs search endpoints for quick debugging |
+| `test-web-search.js` | Runs the standalone web search pipeline |
+
+**Why separate?**
+- Keeps the repository root tidy while keeping these helpers in a predictable folder under `scripts/`.
+
+---
+
 ## 📦 **`api/` - API Code (Alternative Backend)**
 **Role:** Alternative API implementation (might be unused or for different deployment).
 
@@ -237,12 +252,25 @@ Now TypeScript knows what a `Wine` object should look like!
 
 ## 📚 **Documentation Files**
 
-All the `.md` files are documentation:
-- `README.md` - Main project documentation
-- `ARCHITECTURE.md` - System architecture explanation
-- `CHANGELOG.md` - History of changes
-- `SETUP.md` - Setup instructions
-- etc.
+All the `.md` files are documentation and now live under `docs/`:
+- `docs/reference/` – changelog, reference guides, and the legacy README
+- `docs/architecture/` – architecture writeups, folder roles, and logic docs
+- `docs/getting-started/` – setup, deployment, and environment instructions
+- `docs/testing/` – test plans, experiments, and troubleshooting guides
+
+---
+
+## 🗂️ **`archives/` - Archived Helpers, Env Templates & Logs**
+**Role:** Houses miscellaneous artifacts and helper scripts that are no longer part of the active app but worth keeping for reference.
+
+| Folder | What It Contains |
+|--------|------------------|
+| `archives/configuration/` | Environment template files (`.env.example`, `.env.production`, `.env.vercel`) so setup docs can point to one place |
+| `archives/logs/` | Expo + serve log dumps from earlier runs |
+| `archives/legacy-scripts/` | One-off utilities like `list-models.js` and `clear-onboarding.js` that were moved out of the app root |
+
+**Why keep it?**
+- Prevents clutter at the root while still keeping these helpers accessible for debugging or onboarding reference.
 
 ---
 

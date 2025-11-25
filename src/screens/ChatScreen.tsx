@@ -14,7 +14,7 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { theme } from '../theme';
+import { theme, rf, rs } from '../theme';
 import type { Wine, ChatConversation, ChatMessage } from '../types';
 import {
   createChatConversation,
@@ -67,7 +67,7 @@ export function ChatScreen() {
 
   useEffect(() => {
     initializeConversation();
-  }, []);
+  }, [conversationId]); // Add conversationId to dependencies so it re-runs when conversation changes
 
   useEffect(() => {
     if (initialMessage) {
@@ -77,10 +77,13 @@ export function ChatScreen() {
 
   useEffect(() => {
     // Store initial wines data if provided via navigation params
+    // This MUST happen BEFORE messages are rendered
     if (initialWinesData) {
+      console.log('[ChatScreen] Storing initial wines data:', Object.keys(initialWinesData));
       setWinesData(prev => {
         const newMap = new Map(prev);
         Object.entries(initialWinesData).forEach(([messageId, wines]) => {
+          console.log(`[ChatScreen] Adding wines for message ${messageId}:`, wines.length);
           newMap.set(messageId, wines);
         });
         return newMap;
@@ -114,15 +117,50 @@ export function ChatScreen() {
       setIsInitializing(true);
       let conv: ChatConversation;
 
+      console.log('[ChatScreen] initializeConversation called with:', {
+        conversationId,
+        imageUrl,
+        hasWinesData: !!initialWinesData
+      });
+
+      // CRITICAL: Store wines data FIRST before loading messages
+      if (initialWinesData) {
+        console.log('[ChatScreen] Pre-populating winesData before loading messages');
+        setWinesData(prev => {
+          const newMap = new Map(prev);
+          Object.entries(initialWinesData).forEach(([messageId, wines]) => {
+            console.log(`[ChatScreen] Pre-loading wines for message ${messageId}:`, wines.length);
+            newMap.set(messageId, wines);
+          });
+          return newMap;
+        });
+      }
+
       if (conversationId) {
         // Load existing conversation
         conv = await getChatConversation(conversationId);
+        console.log('[ChatScreen] Loaded conversation:', {
+          id: conv?.id,
+          imageUrl: conv?.imageUrl,
+          title: conv?.title
+        });
         if (!conv) {
           throw new Error('Conversation not found');
         }
         setConversation(conv);
         const existingMessages = await getChatMessages(conversationId);
+        console.log('[ChatScreen] Loaded messages:', existingMessages.length,
+          existingMessages.map(m => ({
+            id: m.id,
+            role: m.role,
+            hasContent: !!m.content,
+            hasImage: !!m.imageUrl,
+            hasWines: initialWinesData ? !!initialWinesData[m.id] : false
+          })));
+
+        // Set messages AFTER winesData is already populated
         setMessages(existingMessages);
+
         if (conv.imageUrl) {
           setUploadedImage(conv.imageUrl);
         }
@@ -157,22 +195,8 @@ export function ChatScreen() {
     }
   };
 
-  const handleImagePick = () => {
-    setShowImagePicker(true);
-  };
-
-  const handleImageOption = async (option: 'camera' | 'library') => {
-    setShowImagePicker(false);
-    
+  const handleImagePick = async () => {
     try {
-      if (option === 'camera') {
-        // Navigate to Camera screen instead of opening camera picker
-        // Pass a flag to indicate we came from Chat so it returns here after processing
-        (navigation as any).navigate('Camera', { returnToChat: true, conversationId: conversation?.id });
-        return;
-      }
-      
-      // For library, use image picker
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
@@ -189,7 +213,7 @@ export function ChatScreen() {
     } catch (error: any) {
       console.error('Error picking image:', error);
       const errorMessage = error.message?.includes('permission')
-        ? 'Camera permission denied. Please enable camera access in settings.'
+        ? 'Photo library permission denied. Please enable access in settings.'
         : 'Failed to pick image. Please try again.';
       Alert.alert('Error', errorMessage);
     }
@@ -483,7 +507,15 @@ export function ChatScreen() {
   };
 
   const handleSend = async () => {
-    if (!inputText.trim() || isLoading || isAnalyzing || !conversation) return;
+    if (!inputText.trim() || isLoading || isAnalyzing || !conversation) {
+      console.log('[ChatScreen] handleSend blocked:', { 
+        noText: !inputText.trim(), 
+        isLoading, 
+        isAnalyzing, 
+        noConversation: !conversation 
+      });
+      return;
+    }
 
     const userMessage = inputText.trim();
     setInputText('');
@@ -497,9 +529,12 @@ export function ChatScreen() {
       createdAt: new Date().toISOString(),
     };
 
-    try {
-      setMessages(prev => [...prev, tempUserMessage]);
+    // Add message to UI immediately
+    setMessages(prev => [...prev, tempUserMessage]);
 
+    try {
+      console.log('[ChatScreen] Sending message:', userMessage);
+      
       const assistantMessage = await sendChatMessage(
         conversation.id,
         userMessage,
@@ -507,6 +542,9 @@ export function ChatScreen() {
         uploadedImage || imageUrl || conversation.imageUrl
       );
 
+      console.log('[ChatScreen] Got response:', assistantMessage.content?.substring(0, 100));
+
+      // Replace temp message with saved message and add response
       setMessages(prev => [
         ...prev.filter(m => m.id !== tempUserMessage.id),
         {
@@ -528,16 +566,32 @@ export function ChatScreen() {
         }
       }
     } catch (error: any) {
-      console.error('Error sending message:', error);
-      setMessages(prev => prev.filter(m => m.id !== tempUserMessage.id));
+      console.error('[ChatScreen] Error sending message:', error);
       
-      const errorMessage = error.message?.includes('network') || error.message?.includes('fetch')
+      // DON'T remove the user's message on error - keep it visible
+      // Just mark it somehow or add an error message
+      const errorContent = error.message?.includes('network') || error.message?.includes('fetch')
         ? 'Network error. Please check your internet connection and try again.'
         : error.message?.includes('API key')
         ? 'AI service is temporarily unavailable. Please try again later.'
-        : 'Failed to send message. Please try again.';
+        : `Failed to send message: ${error.message || 'Unknown error'}`;
       
-      Alert.alert('Error', errorMessage);
+      // Add an error message from assistant instead of removing user message
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        conversationId: conversation.id,
+        role: 'assistant',
+        content: `⚠️ ${errorContent}`,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      
+      // Also show alert on web
+      if (Platform.OS === 'web') {
+        window.alert(errorContent);
+      } else {
+        Alert.alert('Error', errorContent);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -583,15 +637,23 @@ export function ChatScreen() {
           <Ionicons name="arrow-back" size={24} color="#1c1915" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Wine Chat</Text>
-        <TouchableOpacity 
-          onPress={() => (navigation as any).navigate('Camera', { 
-            returnToChat: true, 
-            conversationId: conversation?.id 
-          })} 
-          style={styles.cameraButton}
-        >
-          <Ionicons name="camera-outline" size={24} color={theme.colors.text.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => (navigation as any).navigate('Settings')}
+          >
+            <Ionicons name="settings-outline" size={24} color={theme.colors.text.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => (navigation as any).navigate('Camera', {
+              returnToChat: true,
+              conversationId: conversation?.id
+            })}
+            style={styles.cameraButton}
+          >
+            <Ionicons name="camera-outline" size={24} color={theme.colors.text.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -599,7 +661,11 @@ export function ChatScreen() {
         style={styles.messagesContainer}
         contentContainerStyle={styles.messagesContent}
       >
-        {uploadedImage && !conversation?.imageUrl && (
+        {/* Only show uploaded image container when:
+            1. We have an uploaded image AND
+            2. There are no messages yet (image hasn't been analyzed) AND
+            3. We're actively analyzing (user just picked an image) */}
+        {uploadedImage && messages.length === 0 && isAnalyzing && (
            <View style={styles.uploadedImageContainer}>
              <Image source={{ uri: uploadedImage }} style={styles.uploadedImage} resizeMode="contain" />
            </View>
@@ -666,38 +732,6 @@ export function ChatScreen() {
         isLoading={isLoading || isAnalyzing}
         placeholder={wine ? "Ask about this wine..." : "Ask me anything about wine..."}
       />
-
-      {showImagePicker && (
-        <View style={styles.imagePickerModal}>
-          <TouchableOpacity
-            style={styles.imagePickerBackdrop}
-            onPress={() => setShowImagePicker(false)}
-            activeOpacity={1}
-          />
-          <View style={styles.imagePickerOptions}>
-            <TouchableOpacity
-              style={styles.imagePickerOption}
-              onPress={() => handleImageOption('camera')}
-            >
-              <Ionicons name="camera" size={32} color={theme.colors.primary[600]} />
-              <Text style={styles.imagePickerOptionText}>Take Photo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.imagePickerOption}
-              onPress={() => handleImageOption('library')}
-            >
-              <Ionicons name="images" size={32} color={theme.colors.primary[600]} />
-              <Text style={styles.imagePickerOptionText}>Choose from Library</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.imagePickerCancel}
-              onPress={() => setShowImagePicker(false)}
-            >
-              <Text style={styles.imagePickerCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
     </KeyboardAvoidingView>
   );
 }
@@ -708,9 +742,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fefdfb', // theme.colors.background
   },
   header: {
-    paddingTop: 60,
-    paddingHorizontal: 24,
-    paddingBottom: 16,
+    paddingTop: rs(60),
+    paddingHorizontal: rs(24),
+    paddingBottom: rs(16),
     backgroundColor: '#faf8f4',
     borderBottomWidth: 1,
     borderBottomColor: '#e8e3d8',
@@ -720,79 +754,92 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: rs(40),
+    height: rs(40),
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
   cameraButton: {
-    width: 40,
-    height: 40,
+    width: rs(40),
+    height: rs(40),
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: rs(theme.spacing.sm),
+  },
+  settingsButton: {
+    width: rs(40),
+    height: rs(40),
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: Platform.OS === 'ios' ? 'PlayfairDisplay_400Regular' : 'serif',
-    fontSize: 24,
+    fontSize: rf(24),
     fontWeight: '400' as any,
     color: '#1c1915',
     textAlign: 'center',
     flex: 1,
   },
   headerSubtitle: {
-    ...theme.typography.styles.bodySmall,
+    fontSize: rf(14),
     color: theme.colors.text.secondary,
-    marginTop: 2,
+    marginTop: rs(2),
   },
   messagesContainer: {
     flex: 1,
   },
   messagesContent: {
-    padding: 24,
-    paddingBottom: 120, // Extra padding to prevent overlap with ChatInput
+    padding: rs(24),
+    paddingBottom: rs(120), // Extra padding to prevent overlap with ChatInput
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: rs(60),
   },
   emptyText: {
-    ...theme.typography.styles.bodyLarge,
+    fontSize: rf(18),
     color: theme.colors.text.primary,
-    marginTop: 32,
+    marginTop: rs(32),
     textAlign: 'center',
   },
   emptySubtext: {
-    ...theme.typography.styles.bodySmall,
+    fontSize: rf(14),
     color: theme.colors.text.secondary,
-    marginTop: 16,
+    marginTop: rs(16),
     textAlign: 'center',
+    paddingHorizontal: rs(24),
   },
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: rs(24),
   },
   analyzingContainer: {
     alignItems: 'center',
   },
   analyzingText: {
-    ...theme.typography.styles.bodySmall,
+    fontSize: rf(14),
     color: theme.colors.text.secondary,
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: rs(12),
+    marginBottom: rs(8),
   },
   processingSteps: {
     flexDirection: 'row',
-    gap: 4,
-    marginTop: 4,
+    gap: rs(4),
+    marginTop: rs(4),
   },
   stepDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: rs(8),
+    height: rs(8),
+    borderRadius: rs(4),
     backgroundColor: theme.colors.border,
   },
   stepDotActive: {
@@ -801,30 +848,30 @@ const styles = StyleSheet.create({
   thinkingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: rs(8),
   },
   thinkingDots: {
     flexDirection: 'row',
-    gap: 4,
+    gap: rs(4),
   },
   thinkingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: rs(8),
+    height: rs(8),
+    borderRadius: rs(4),
     backgroundColor: theme.colors.text.tertiary,
   },
   uploadedImageContainer: {
-    marginBottom: 16,
-    borderRadius: 12,
+    marginBottom: rs(16),
+    borderRadius: rs(12),
     overflow: 'hidden',
     backgroundColor: '#faf8f4',
-    padding: 16,
+    padding: rs(16),
     alignItems: 'center',
   },
   uploadedImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 8,
+    width: rs(200),
+    height: rs(200),
+    borderRadius: rs(8),
   },
   imagePickerModal: {
     position: 'absolute',
@@ -847,28 +894,28 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: theme.borderRadius.lg,
     borderTopRightRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    paddingBottom: Platform.OS === 'web' ? theme.spacing.lg : theme.spacing['2xl'],
+    padding: rs(theme.spacing.lg),
+    paddingBottom: Platform.OS === 'web' ? rs(theme.spacing.lg) : rs(theme.spacing['2xl']),
   },
   imagePickerOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: theme.spacing.md,
+    padding: rs(theme.spacing.md),
     borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.background,
-    marginBottom: theme.spacing.md,
+    marginBottom: rs(theme.spacing.md),
   },
   imagePickerOptionText: {
-    ...theme.typography.styles.body,
+    fontSize: rf(16),
     color: theme.colors.text.primary,
-    marginLeft: theme.spacing.md,
+    marginLeft: rs(theme.spacing.md),
   },
   imagePickerCancel: {
-    padding: theme.spacing.md,
+    padding: rs(theme.spacing.md),
     alignItems: 'center',
   },
   imagePickerCancelText: {
-    ...theme.typography.styles.body,
+    fontSize: rf(16),
     color: theme.colors.text.secondary,
   },
 });

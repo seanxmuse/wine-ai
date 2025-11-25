@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import type { Wine, RankingCategory } from '../types';
@@ -15,9 +14,8 @@ interface WineCardProps {
 }
 
 export function WineCard({ wine, rank, category, imageUrl, scanId }: WineCardProps) {
-  const navigation = useNavigation();
   const markupColor = wine.markup ? getMarkupColor(wine.markup) : theme.colors.text.tertiary;
-  
+
   // Debug logging for critic scores
   if (wine.criticScore) {
     console.log(`[WineCard] ${wine.displayName} - Displaying critic score:`, {
@@ -29,15 +27,6 @@ export function WineCard({ wine, rank, category, imageUrl, scanId }: WineCardPro
     console.log(`[WineCard] ${wine.displayName} - No critic score to display`);
   }
 
-  const handleChatPress = () => {
-    (navigation as any).navigate('Chat', {
-      wine,
-      imageUrl,
-      scanId,
-      initialMessage: `Tell me more about wine ${wine.displayName}`,
-    });
-  };
-
   return (
     <View style={styles.card}>
       {/* Rank Badge */}
@@ -48,16 +37,16 @@ export function WineCard({ wine, rank, category, imageUrl, scanId }: WineCardPro
       {/* Wine Info */}
       <View style={styles.content}>
         <View style={styles.nameRow}>
-          <Text style={styles.wineName}>
+          <Text style={styles.wineName} numberOfLines={3}>
             {wine.displayName}
           </Text>
-          {wine.dataSource === 'web-search' && (
-            <View style={styles.webSearchBadge}>
-              <Ionicons name="search" size={12} color={theme.colors.primary[600]} />
-              <Text style={styles.webSearchBadgeText}>Web</Text>
-            </View>
-          )}
         </View>
+        {wine.dataSource === 'web-search' && (
+          <View style={styles.webSearchBadge}>
+            <Ionicons name="search" size={12} color={theme.colors.primary[600]} />
+            <Text style={styles.webSearchBadgeText}>Web</Text>
+          </View>
+        )}
 
         <View style={styles.detailsContainer}>
           {wine.vintage && (
@@ -133,17 +122,19 @@ export function WineCard({ wine, rank, category, imageUrl, scanId }: WineCardPro
         {/* Critic Score */}
         {wine.criticScore ? (
           <View style={styles.scoreSection}>
-            <View style={styles.scoreBadge}>
-              <Text style={styles.scoreValue}>{wine.criticScore}</Text>
-              <Text style={styles.scoreMax}>/100</Text>
-            </View>
-            {wine.criticCount ? (
-              <Text style={styles.criticName}>
-                Avg score of {wine.criticScore} across {wine.criticCount} {wine.criticCount === 1 ? 'Critic' : 'Critics and Enthusiasts'}
-              </Text>
-            ) : wine.critic ? (
-              <Text style={styles.criticName}>{wine.critic}</Text>
-            ) : null}
+            <Text style={styles.scoreText}>
+              {wine.criticScore}/100 from{' '}
+              {wine.criticSourceUrl ? (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(wine.criticSourceUrl!)}
+                  style={{ display: 'inline' }}
+                >
+                  <Text style={styles.criticSourceLink}>{wine.criticSource || 'Wine Labs'}</Text>
+                </TouchableOpacity>
+              ) : (
+                wine.criticSource || 'Wine Labs'
+              )}
+            </Text>
           </View>
         ) : (
           <View style={styles.noScoreSection}>
@@ -159,14 +150,6 @@ export function WineCard({ wine, rank, category, imageUrl, scanId }: WineCardPro
             </Text>
           </View>
         )}
-
-        {/* Chat Button */}
-        <View style={styles.chatSection}>
-          <TouchableOpacity style={styles.chatButton} onPress={handleChatPress}>
-            <Ionicons name="chatbubble-outline" size={18} color={theme.colors.primary[600]} />
-            <Text style={styles.chatButtonText}>Chat about this wine</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </View>
   );
@@ -201,17 +184,14 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
   },
   nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: theme.spacing.xs,
-    flexWrap: 'wrap',
   },
   wineName: {
     ...theme.typography.styles.cardTitle,
     color: theme.colors.text.primary,
-    lineHeight: Platform.OS === 'web' ? 1.2 : theme.typography.styles.cardTitle.lineHeight,
-    flex: 1,
-    marginRight: theme.spacing.sm,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
   },
   webSearchBadge: {
     flexDirection: 'row',
@@ -221,11 +201,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: theme.borderRadius.sm,
     gap: 4,
+    alignSelf: 'flex-start',
+    marginBottom: theme.spacing.sm,
   },
   webSearchBadgeText: {
     ...theme.typography.styles.caption,
     color: theme.colors.primary[600],
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
   },
   detailsContainer: {
@@ -261,7 +243,7 @@ const styles = StyleSheet.create({
     ...theme.typography.styles.caption,
     color: theme.colors.text.secondary,
     textTransform: 'uppercase',
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: Platform.OS === 'web' ? 16 : theme.typography.styles.caption.lineHeight * 14,
   },
   priceValueContainer: {
@@ -283,7 +265,7 @@ const styles = StyleSheet.create({
   priceSourceText: {
     ...theme.typography.styles.caption,
     color: theme.colors.text.tertiary,
-    fontSize: 10,
+    fontSize: 12,
     marginTop: 2,
   },
   markupRow: {
@@ -311,28 +293,18 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.divider,
     paddingTop: theme.spacing.md,
     marginTop: theme.spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
-  scoreBadge: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginRight: theme.spacing.sm,
-  },
-  scoreValue: {
-    ...theme.typography.styles.sectionTitle,
-    color: theme.colors.gold[600],
-    fontSize: 28,
-  },
-  scoreMax: {
-    ...theme.typography.styles.bodySmall,
-    color: theme.colors.text.tertiary,
-    marginLeft: 2,
-  },
-  criticName: {
-    ...theme.typography.styles.caption,
+  scoreText: {
+    ...theme.typography.styles.bodyLarge,
     color: theme.colors.text.secondary,
-    flex: 1,
+    fontSize: 14,
+  },
+  criticSourceLink: {
+    ...theme.typography.styles.bodyLarge,
+    color: theme.colors.primary[600],
+    textDecorationLine: 'underline',
+    fontWeight: '500',
+    fontSize: 14,
   },
   valueHighlight: {
     marginTop: theme.spacing.md,
@@ -360,28 +332,5 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.md,
     borderTopWidth: 1,
     borderTopColor: theme.colors.divider,
-  },
-  chatSection: {
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.divider,
-  },
-  chatButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    backgroundColor: theme.colors.primary[50],
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.primary[200],
-  },
-  chatButtonText: {
-    ...theme.typography.styles.bodySmall,
-    color: theme.colors.primary[600],
-    marginLeft: theme.spacing.xs,
-    fontFamily: theme.typography.fonts.bodyMedium,
   },
 });

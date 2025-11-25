@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Enhanced viewport for PWA - hides browser UI -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, minimal-ui" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Wine Scanner" />
+
+    <!-- Additional iOS PWA optimizations -->
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="apple-touch-startup-image" href="%WEB_PUBLIC_URL%apple-touch-icon.png" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="%WEB_PUBLIC_URL%manifest.json" />
+
+    <!-- Theme colors -->
+    <meta name="theme-color" content="#8b3952" />
+    <meta name="msapplication-TileColor" content="#8b3952" />
+
+    <!-- Icons -->
+    <link rel="apple-touch-icon" href="%WEB_PUBLIC_URL%apple-touch-icon.png" />
+    <link rel="icon" type="image/png" href="%WEB_PUBLIC_URL%favicon.png" />
+    <link rel="shortcut icon" href="%WEB_PUBLIC_URL%favicon.ico" />
+
+    <!-- App Info -->
+    <meta name="application-name" content="Wine Scanner" />
+    <meta name="description" content="Discover the best wines on any restaurant wine list" />
+
+    <title>%WEB_TITLE%</title>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+        height: 100vh;
+        height: 100dvh; /* Dynamic viewport height for mobile browsers */
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        position: fixed;
+        overflow: hidden;
+        overscroll-behavior: none;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* Prevent pull-to-refresh and ensure full screen */
+      html {
+        touch-action: manipulation;
+      }
+
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        height: 100vh;
+        height: 100dvh; /* Dynamic viewport height */
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Hide address bar on iOS */
+      @supports (-webkit-touch-callout: none) {
+        body {
+          min-height: -webkit-fill-available;
+        }
+        #root {
+          min-height: -webkit-fill-available;
+        }
+      }
+
+      /* PWA standalone mode - hide browser toolbars when installed */
+      @media all and (display-mode: standalone) {
+        html,
+        body,
+        #root {
+          height: 100vh;
+          height: 100dvh;
+          position: fixed;
+          width: 100%;
+          overflow: hidden;
+        }
+      }
+
+      /* iOS PWA fullscreen */
+      @media all and (display-mode: fullscreen) {
+        html,
+        body,
+        #root {
+          height: 100vh;
+          height: 100dvh;
+          position: fixed;
+          width: 100%;
+          overflow: hidden;
+        }
+      }
+
+      /* iOS Safari standalone detection */
+      @supports (-webkit-touch-callout: none) {
+        @media (display-mode: standalone) {
+          body {
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+          }
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+  </body>
+</html>

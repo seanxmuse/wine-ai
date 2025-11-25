@@ -9,9 +9,11 @@ import {
   ScrollView,
   Platform,
   Linking,
+  TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 import { theme } from '../theme';
 
@@ -22,6 +24,8 @@ export function SettingsScreen() {
   const [userName, setUserName] = useState<string>('Wine Lover');
   const [scansCount, setScansCount] = useState<number>(0);
   const [moneySaved, setMoneySaved] = useState<number>(0);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
 
   useEffect(() => {
     loadUserData();
@@ -32,13 +36,18 @@ export function SettingsScreen() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUserEmail(session.user.email || 'demo@winescanner.com');
-        
+
+        // Load user name from metadata
+        const fullName = session.user.user_metadata?.full_name || 'Wine Lover';
+        setUserName(fullName);
+        setEditedName(fullName);
+
         // Load scan count
         const { count } = await supabase
           .from('scans')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', session.user.id);
-        
+
         if (count !== null) {
           setScansCount(count);
         }
@@ -51,36 +60,100 @@ export function SettingsScreen() {
     }
   };
 
+  const handleSaveName = async () => {
+    if (!editedName.trim()) {
+      if (Platform.OS === 'web') {
+        window.alert('Please enter a valid name');
+      } else {
+        Alert.alert('Error', 'Please enter a valid name');
+      }
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { full_name: editedName.trim() }
+      });
+
+      if (error) throw error;
+
+      setUserName(editedName.trim());
+      setIsEditingName(false);
+
+      if (Platform.OS === 'web') {
+        window.alert('Name updated successfully');
+      } else {
+        Alert.alert('Success', 'Name updated successfully');
+      }
+    } catch (error: any) {
+      console.error('Error updating name:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Failed to update name. Please try again.');
+      } else {
+        Alert.alert('Error', 'Failed to update name. Please try again.');
+      }
+    }
+  };
+
   const handleLogout = async () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsLoggingOut(true);
-              const { error } = await supabase.auth.signOut();
-              if (error) {
-                throw error;
-              }
-              // Navigation will automatically redirect to Auth screen
-              // when session changes (handled in App.js)
-            } catch (error: any) {
-              console.error('Error logging out:', error);
-              Alert.alert('Error', 'Failed to log out. Please try again.');
-              setIsLoggingOut(false);
-            }
+    if (Platform.OS === 'web') {
+      // Web: Use window.confirm
+      const confirmed = window.confirm('Are you sure you want to log out?');
+      if (!confirmed) return;
+
+      try {
+        setIsLoggingOut(true);
+
+        // Clear onboarding flag on logout
+        await AsyncStorage.removeItem('onboarding_completed');
+
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          throw error;
+        }
+        // Navigation will automatically redirect to Auth screen
+        // when session changes (handled in App.js)
+      } catch (error: any) {
+        console.error('Error logging out:', error);
+        window.alert('Failed to log out. Please try again.');
+        setIsLoggingOut(false);
+      }
+    } else {
+      // Native: Use Alert
+      Alert.alert(
+        'Log Out',
+        'Are you sure you want to log out?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
           },
-        },
-      ]
-    );
+          {
+            text: 'Log Out',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setIsLoggingOut(true);
+
+                // Clear onboarding flag on logout
+                await AsyncStorage.removeItem('onboarding_completed');
+
+                const { error } = await supabase.auth.signOut();
+                if (error) {
+                  throw error;
+                }
+                // Navigation will automatically redirect to Auth screen
+                // when session changes (handled in App.js)
+              } catch (error: any) {
+                console.error('Error logging out:', error);
+                Alert.alert('Error', 'Failed to log out. Please try again.');
+                setIsLoggingOut(false);
+              }
+            },
+          },
+        ]
+      );
+    }
   };
 
   const handleHelpSupport = () => {
@@ -101,24 +174,57 @@ export function SettingsScreen() {
         {/* Profile Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Profile</Text>
-          <View style={styles.profileCard}>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={48} color={theme.colors.gold[500]} />
+          {isEditingName ? (
+            <View style={styles.profileEditCard}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Name</Text>
+                <TextInput
+                  style={styles.nameInput}
+                  value={editedName}
+                  onChangeText={setEditedName}
+                  placeholder="Enter your name"
+                  placeholderTextColor={theme.colors.text.tertiary}
+                  autoFocus
+                />
+              </View>
+              <View style={styles.editButtons}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setEditedName(userName);
+                    setIsEditingName(false);
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={handleSaveName}
+                >
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{userName}</Text>
-              <Text style={styles.profileEmail}>{userEmail}</Text>
+          ) : (
+            <View style={styles.profileCard}>
+              <View style={styles.avatar}>
+                <Ionicons name="person" size={48} color={theme.colors.gold[500]} />
+              </View>
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName}>{userName}</Text>
+                <Text style={styles.profileEmail}>{userEmail}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsEditingName(true)}>
+                <Ionicons name="pencil" size={24} color={theme.colors.gold[500]} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity>
-              <Ionicons name="pencil" size={24} color={theme.colors.gold[500]} />
-            </TouchableOpacity>
-          </View>
+          )}
         </View>
 
         {/* About Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About</Text>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingItemContent}>
               <Ionicons name="wine-outline" size={24} color={theme.colors.text.primary} style={{ marginRight: 16 }} />
@@ -349,6 +455,63 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#8b3952',
+    fontWeight: '600' as any,
+  },
+  profileEditCard: {
+    padding: 24,
+    backgroundColor: '#faf8f4',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e8e3d8',
+    ...theme.shadows.sm,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600' as any,
+    color: '#5a5045',
+    marginBottom: 8,
+  },
+  nameInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e8e3d8',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 18,
+    color: '#1c1915',
+  },
+  editButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  cancelButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e8e3d8',
+    backgroundColor: '#fff',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: '#5a5045',
+    fontWeight: '500' as any,
+  },
+  saveButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: theme.colors.primary[600],
+    ...theme.shadows.sm,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    color: '#fff',
     fontWeight: '600' as any,
   },
 });

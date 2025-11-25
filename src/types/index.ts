@@ -12,6 +12,8 @@ export interface Wine {
   criticScore?: number;
   critic?: string;
   criticCount?: number; // Number of critics/enthusiasts who rated this wine
+  criticSource?: string; // Source of critic score (e.g., "Wine Searcher", "Wine Labs")
+  criticSourceUrl?: string; // URL to the critic score source page
   varietal?: string;
   region?: string;
   color?: string;

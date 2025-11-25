@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme';
+import { theme, rf, rs } from '../theme';
 import type { ChatConversation } from '../types';
 import { getChatConversations, deleteChatConversation } from '../services/chat';
 
@@ -72,45 +72,28 @@ export function ChatHistoryScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()} 
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chat History</Text>
         <TouchableOpacity
-          style={styles.createChatButton}
-          onPress={() => (navigation as any).navigate('Chat', {})}
+          style={styles.settingsButton}
+          onPress={() => (navigation as any).navigate('Settings')}
         >
-          <Ionicons name="add" size={24} color={theme.colors.primary[600]} />
+          <Ionicons name="settings-outline" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Bottom Tab Bar */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons
-            name="camera-outline"
-            size={24}
-            color={theme.colors.text.secondary}
-          />
-          <Text style={styles.tabLabel}>Camera</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, styles.tabActive]}
-        >
-          <Ionicons
-            name="chatbubbles"
-            size={24}
-            color={theme.colors.primary[600]}
-          />
-          <Text style={[styles.tabLabel, styles.tabLabelActive]}>Chat</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={styles.newChatButton}
+        onPress={() => (navigation as any).navigate('Chat', {})}
+      >
+        <Ionicons name="add-circle" size={24} color={theme.colors.primary[600]} style={styles.newChatIcon} />
+        <Text style={styles.newChatText}>New Chat</Text>
+      </TouchableOpacity>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {conversations.length === 0 ? (
@@ -136,13 +119,10 @@ export function ChatHistoryScreen() {
                     color={theme.colors.primary[600]}
                     style={styles.conversationIcon}
                   />
-                  <Text style={styles.conversationTitle} numberOfLines={1}>
+                  <Text style={styles.conversationTitle}>
                     {conversation.title}
                   </Text>
                 </View>
-                <Text style={styles.conversationDate}>
-                  {new Date(conversation.updatedAt).toLocaleDateString()}
-                </Text>
               </View>
               <TouchableOpacity
                 style={styles.deleteButton}
@@ -166,26 +146,52 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 60,
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
+    paddingTop: rs(60),
+    paddingHorizontal: rs(theme.spacing.lg),
+    paddingBottom: rs(theme.spacing.md),
     backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   backButton: {
-    marginRight: theme.spacing.md,
+    marginRight: rs(theme.spacing.md),
   },
   headerTitle: {
     ...theme.typography.styles.pageTitle,
     color: theme.colors.text.primary,
-    fontSize: 24,
+    fontSize: rf(24),
+    flex: 1,
+  },
+  settingsButton: {
+    padding: rs(theme.spacing.xs),
+  },
+  newChatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    marginHorizontal: rs(theme.spacing.lg),
+    marginTop: rs(theme.spacing.md),
+    marginBottom: rs(theme.spacing.sm),
+    padding: rs(theme.spacing.md),
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    ...theme.shadows.sm,
+  },
+  newChatIcon: {
+    marginRight: rs(theme.spacing.sm),
+  },
+  newChatText: {
+    ...theme.typography.styles.bodyLarge,
+    color: theme.colors.text.primary,
+    fontSize: rf(16),
+    fontWeight: '500',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: theme.spacing.lg,
+    padding: rs(theme.spacing.lg),
   },
   loadingContainer: {
     flex: 1,
@@ -195,30 +201,32 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.spacing['3xl'],
-    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: rs(theme.spacing['3xl']),
+    paddingHorizontal: rs(theme.spacing.lg),
   },
   emptyText: {
     ...theme.typography.styles.bodyLarge,
     color: theme.colors.text.primary,
-    marginTop: theme.spacing.lg,
+    marginTop: rs(theme.spacing.lg),
     textAlign: 'center',
-    lineHeight: Platform.OS === 'web' ? 28 : theme.typography.styles.bodyLarge.lineHeight * 24,
+    fontSize: rf(16),
+    lineHeight: rf(24),
   },
   emptySubtext: {
     ...theme.typography.styles.bodySmall,
     color: theme.colors.text.secondary,
-    marginTop: theme.spacing.md,
+    marginTop: rs(theme.spacing.md),
     textAlign: 'center',
-    lineHeight: Platform.OS === 'web' ? 22 : theme.typography.styles.bodySmall.lineHeight * 18,
-    paddingHorizontal: theme.spacing.md,
+    fontSize: rf(14),
+    lineHeight: rf(20),
+    paddingHorizontal: rs(theme.spacing.md),
   },
   conversationCard: {
     flexDirection: 'row',
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    padding: rs(theme.spacing.md),
+    marginBottom: rs(theme.spacing.md),
     borderWidth: 1,
     borderColor: theme.colors.border,
     alignItems: 'center',
@@ -229,65 +237,26 @@ const styles = StyleSheet.create({
   conversationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.xs,
+    marginBottom: rs(theme.spacing.xs),
   },
   conversationIcon: {
-    marginRight: theme.spacing.sm,
+    marginRight: rs(theme.spacing.sm),
   },
   conversationTitle: {
     ...theme.typography.styles.bodyLarge,
     color: theme.colors.text.primary,
     flex: 1,
+    fontSize: rf(16),
   },
   conversationDate: {
     ...theme.typography.styles.bodySmall,
     color: theme.colors.text.tertiary,
-    marginLeft: 28, // Align with title (icon width + margin)
+    marginLeft: rs(28), // Align with title (icon width + margin)
+    fontSize: rf(12),
   },
   deleteButton: {
-    padding: theme.spacing.sm,
-    marginLeft: theme.spacing.sm,
-  },
-  createChatButton: {
-    padding: theme.spacing.xs,
-  },
-  tabBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    paddingBottom: Platform.OS === 'web' ? theme.spacing.md : theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    ...(Platform.OS === 'web' && {
-      boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.1)' as any,
-    }),
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.sm,
-    ...(Platform.OS === 'web' && {
-      cursor: 'pointer' as any,
-      transition: 'all 0.2s ease' as any,
-    }),
-  },
-  tabActive: {
-    backgroundColor: theme.colors.primary[50],
-  },
-  tabLabel: {
-    ...theme.typography.styles.bodySmall,
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing.xs,
-    fontSize: 12,
-  },
-  tabLabelActive: {
-    color: theme.colors.primary[600],
-    fontFamily: theme.typography.fonts.bodyMedium,
+    padding: rs(theme.spacing.sm),
+    marginLeft: rs(theme.spacing.sm),
   },
 });
 

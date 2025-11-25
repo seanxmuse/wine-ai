@@ -19,7 +19,14 @@ import { WineCard } from '../components/WineCard';
 export function ResultsScreen() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { wines, imageUrl, scanId, wine } = route.params as { wines?: Wine[]; wine?: Wine; imageUrl?: string; scanId?: string };
+  const { wines, imageUrl, scanId, wine, conversationId, assistantMessageId } = route.params as {
+    wines?: Wine[];
+    wine?: Wine;
+    imageUrl?: string;
+    scanId?: string;
+    conversationId?: string;
+    assistantMessageId?: string;
+  };
 
   // Determine if we are showing a single wine detail or a list
   const singleWine = wine || (wines && wines.length === 1 ? wines[0] : null);
@@ -48,7 +55,7 @@ export function ResultsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#1c1915" />
+            <Text style={{ fontSize: 24 }}>←</Text>
           </TouchableOpacity>
           <View style={{ width: 40 }} />
         </View>
@@ -68,16 +75,12 @@ export function ResultsScreen() {
                     )}
                     {singleWine.varietal && (
                         <View style={styles.metaTag}>
-                            <Text style={styles.metaTagText}>
-                                <Ionicons name="leaf-outline" size={14} color="#5a5045" /> {singleWine.varietal}
-                            </Text>
+                            <Text style={styles.metaTagText}>🍇 {singleWine.varietal}</Text>
                         </View>
                     )}
                     {singleWine.region && (
                         <View style={styles.metaTag}>
-                            <Text style={styles.metaTagText}>
-                                <Ionicons name="location-outline" size={14} color="#5a5045" /> {singleWine.region}
-                            </Text>
+                            <Text style={styles.metaTagText}>📍 {singleWine.region}</Text>
                         </View>
                     )}
                 </View>
@@ -99,10 +102,7 @@ export function ResultsScreen() {
                     <View style={styles.priceRowLast}>
                         <Text style={styles.priceLabel}>Markup</Text>
                         <View style={styles.markupBadge}>
-                            <Text style={styles.markupText}>
-                                {formatMarkup(singleWine.markup)} 
-                                {singleWine.markup > 200 && <Ionicons name="warning-outline" size={16} color="#fefdfb" style={{ marginLeft: 4 }} />}
-                            </Text>
+                            <Text style={styles.markupText}>{formatMarkup(singleWine.markup)} {singleWine.markup > 200 ? '⚠️' : ''}</Text>
                         </View>
                     </View>
                 )}
@@ -132,11 +132,11 @@ export function ResultsScreen() {
             {/* Action Buttons */}
             <View style={styles.actionButtons}>
                 <TouchableOpacity style={styles.actionButtonSecondary} onPress={handleChatPress}>
-                    <Ionicons name="chatbubble-ellipses-outline" size={20} color="#1c1915" />
+                    <Text style={{ fontSize: 20 }}>💬</Text>
                     <Text style={styles.actionButtonTextSecondary}>Chat</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.actionButtonPrimary} onPress={() => Alert.alert('Saved', 'Wine saved to favorites!')}>
-                    <Ionicons name="heart-outline" size={20} color="#1c1915" />
+                    <Text style={{ fontSize: 20 }}>❤️</Text>
                     <Text style={styles.actionButtonTextPrimary}>Save</Text>
                 </TouchableOpacity>
             </View>
@@ -159,6 +159,28 @@ export function ResultsScreen() {
     { key: 'mostInexpensive', label: 'Most Inexpensive' },
   ];
 
+  const handleChatPress = () => {
+    if (conversationId) {
+      // Build winesData object if we have both assistantMessageId and wines
+      const winesData = assistantMessageId && activeWines.length > 0
+        ? { [assistantMessageId]: activeWines }
+        : undefined;
+
+      (navigation as any).navigate('Chat', {
+        conversationId,
+        imageUrl,
+        scanId,
+        winesData,
+      });
+    } else {
+      // Fallback if no conversation was created
+      (navigation as any).navigate('Chat', {
+        imageUrl,
+        scanId,
+      });
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -166,8 +188,8 @@ export function ResultsScreen() {
           <Ionicons name="arrow-back" size={24} color="#1c1915" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Analysis Results</Text>
-        <TouchableOpacity onPress={() => (navigation as any).navigate('ChatHistory')}>
-           <Ionicons name="time-outline" size={24} color="#1c1915" />
+        <TouchableOpacity onPress={handleChatPress} style={styles.chatButton}>
+          <Ionicons name="chatbubble-outline" size={24} color="#1c1915" />
         </TouchableOpacity>
       </View>
 
@@ -197,16 +219,34 @@ export function ResultsScreen() {
             ))}
           </View>
 
-           {displayedWines.map((w, index) => (
-              <WineCard
-                key={index}
-                wine={w}
-                rank={index + 1}
-                category={selectedCategory}
-                imageUrl={imageUrl}
-                scanId={scanId}
-              />
-           ))}
+           {displayedWines.length > 0 ? (
+             displayedWines.map((w, index) => (
+               <WineCard
+                 key={index}
+                 wine={w}
+                 rank={index + 1}
+                 category={selectedCategory}
+                 imageUrl={imageUrl}
+                 scanId={scanId}
+               />
+             ))
+           ) : (
+             <View style={styles.emptyState}>
+               <Ionicons name="wine-outline" size={64} color="#a39883" />
+               <Text style={styles.emptyStateTitle}>
+                 {selectedCategory === 'highestRated' ? 'No Rated Wines Found' :
+                  selectedCategory === 'bestValue' ? 'Insufficient Data for Best Value' :
+                  'No Wines Found'}
+               </Text>
+               <Text style={styles.emptyStateText}>
+                 {selectedCategory === 'highestRated'
+                   ? 'None of the wines on this list have critic ratings available from Wine Labs or web search. Try the "Most Inexpensive" view to see all wines by price.'
+                   : selectedCategory === 'bestValue'
+                   ? 'Best Value requires both critic ratings and market prices. Some wines on this list are missing this data. Try "Highest Rated" or "Most Inexpensive" instead.'
+                   : 'No wines could be identified from this image. Please try scanning again with better lighting.'}
+               </Text>
+             </View>
+           )}
       </ScrollView>
     </View>
   );
@@ -236,6 +276,20 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  chatButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1c1915',
+    fontFamily: Platform.OS === 'ios' ? 'CrimsonPro_600SemiBold' : 'serif',
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,
@@ -466,7 +520,9 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     paddingVertical: 12,
+    paddingHorizontal: 4,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 6,
   },
   tabActive: {
@@ -479,9 +535,37 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'CrimsonPro_500Medium' : 'serif',
     textTransform: 'uppercase',
     letterSpacing: 1,
+    textAlign: 'center',
   },
   tabTextActive: {
     color: '#fefdfb',
     fontWeight: '600',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 32,
+    marginHorizontal: 24,
+    backgroundColor: '#faf8f4',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e8e3d8',
+    marginTop: 24,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1c1915',
+    marginTop: 16,
+    marginBottom: 12,
+    fontFamily: Platform.OS === 'ios' ? 'PlayfairDisplay_400Regular' : 'serif',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#5a5045',
+    textAlign: 'center',
+    lineHeight: 22,
+    fontFamily: Platform.OS === 'ios' ? 'CrimsonPro_400Regular' : 'serif',
   },
 });

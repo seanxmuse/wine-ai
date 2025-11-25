@@ -97,7 +97,7 @@ wine-scanner/
 ## Next Steps
 
 - Read [SETUP.md](SETUP.md) for detailed configuration
-- Review [README.md](README.md) for full documentation
+- Review [README.md](../reference/README.md) for full documentation
 - Explore Wine Labs API at [winelabs.ai/api/docs](https://winelabs.ai/api/docs)
 
 Happy wine hunting! 🍷

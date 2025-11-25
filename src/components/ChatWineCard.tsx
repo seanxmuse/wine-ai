@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { theme } from '../theme';
+import { theme, rf, rs } from '../theme';
 import type { Wine } from '../types';
 import { formatPrice, formatMarkup } from '../utils/wineRanking';
 
@@ -72,22 +72,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#faf8f4', // theme.colors.surface
     borderWidth: 1,
     borderColor: '#e8e3d8', // theme.colors.border
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 8,
+    borderRadius: rs(12),
+    padding: rs(16),
+    marginVertical: rs(8),
     width: '100%',
   },
   wineName: {
     fontFamily: Platform.OS === 'ios' ? 'PlayfairDisplay_400Regular' : 'serif',
-    fontSize: 20,
+    fontSize: rf(18),
     color: '#1c1915', // theme.colors.text.primary
-    marginBottom: 8,
+    marginBottom: rs(8),
   },
   wineDetails: {
     fontFamily: Platform.OS === 'ios' ? 'CrimsonPro_400Regular' : 'serif',
-    fontSize: 16,
+    fontSize: rf(14),
     color: '#5a5045', // theme.colors.text.secondary
-    marginBottom: 12,
+    marginBottom: rs(12),
   },
   priceRow: {
     flexDirection: 'row',
@@ -96,23 +96,24 @@ const styles = StyleSheet.create({
   },
   priceValue: {
     fontFamily: Platform.OS === 'ios' ? 'CrimsonPro_600SemiBold' : 'serif',
-    fontSize: 24,
+    fontSize: rf(20),
     fontWeight: '600',
     color: '#d4af37', // theme.colors.gold[500]
   },
   markupBadge: {
     backgroundColor: '#8b3952', // theme.colors.error (burgundy)
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    paddingVertical: rs(4),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(12),
   },
   markupText: {
     fontFamily: Platform.OS === 'ios' ? 'CrimsonPro_600SemiBold' : 'serif',
-    fontSize: 14,
+    fontSize: rf(12),
     fontWeight: '600',
     color: '#fefdfb', // theme.colors.text.inverse
   },
 });
+
 
 
 

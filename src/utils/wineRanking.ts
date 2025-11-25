@@ -10,13 +10,11 @@ export function rankWines(wines: Wine[]): RankingResults {
   // Highest Rated: Sort by critic score (descending)
   const highestRated = [...validWines]
     .filter(wine => wine.criticScore && wine.criticScore > 0)
-    .sort((a, b) => (b.criticScore || 0) - (a.criticScore || 0))
-    .slice(0, 10);
+    .sort((a, b) => (b.criticScore || 0) - (a.criticScore || 0));
 
   // Most Inexpensive: Sort by restaurant price (ascending)
   const mostInexpensive = [...validWines]
-    .sort((a, b) => a.restaurantPrice - b.restaurantPrice)
-    .slice(0, 10);
+    .sort((a, b) => a.restaurantPrice - b.restaurantPrice);
 
   // Best Value: Calculate value score (quality per dollar considering markup)
   const winesWithValue = validWines
@@ -39,8 +37,7 @@ export function rankWines(wines: Wine[]): RankingResults {
         valueScore,
       };
     })
-    .sort((a, b) => b.valueScore - a.valueScore)
-    .slice(0, 10);
+    .sort((a, b) => b.valueScore - a.valueScore);
 
   const bestValue = winesWithValue.map(({ valueScore, ...wine }) => wine);
 
