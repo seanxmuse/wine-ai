@@ -208,6 +208,7 @@ export function SimpleCameraWeb() {
   const retake = () => {
     console.log('[WEB CAMERA] Retake - clearing photo and restarting camera');
     setPhoto(null);
+    setError(null);
     setIsProcessing(false);
     setProcessingStep('idle');
 
