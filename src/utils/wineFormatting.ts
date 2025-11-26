@@ -30,11 +30,7 @@ export function formatWinesAsMarkdown(wines: Wine[]): string {
     }
     
     if (wine.criticScore) {
-      markdown += `  - Score: ${wine.criticScore}/100`;
-      if (wine.criticCount) {
-        markdown += ` (avg across ${wine.criticCount} ${wine.criticCount === 1 ? 'critic' : 'critics'})`;
-      }
-      markdown += '\n';
+      markdown += `  - Avg. Critic Score: ${wine.criticScore}/100\n`;
     }
     
     if (wine.varietal) {

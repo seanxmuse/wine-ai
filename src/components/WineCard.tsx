@@ -123,17 +123,7 @@ export function WineCard({ wine, rank, category, imageUrl, scanId }: WineCardPro
         {wine.criticScore ? (
           <View style={styles.scoreSection}>
             <Text style={styles.scoreText}>
-              {wine.criticScore}/100 from{' '}
-              {wine.criticSourceUrl ? (
-                <TouchableOpacity
-                  onPress={() => Linking.openURL(wine.criticSourceUrl!)}
-                  style={{ display: 'inline' }}
-                >
-                  <Text style={styles.criticSourceLink}>{wine.criticSource || 'Wine Labs'}</Text>
-                </TouchableOpacity>
-              ) : (
-                wine.criticSource || 'Wine Labs'
-              )}
+              Avg. Critic Score: {wine.criticScore}/100
             </Text>
           </View>
         ) : (
@@ -146,7 +136,7 @@ export function WineCard({ wine, rank, category, imageUrl, scanId }: WineCardPro
         {category === 'bestValue' && wine.criticScore && wine.markup !== undefined && (
           <View style={styles.valueHighlight}>
             <Text style={styles.valueText}>
-              Score: {wine.criticScore} • Markup: {formatMarkup(wine.markup)}
+              Avg. Score: {wine.criticScore} • Markup: {formatMarkup(wine.markup)}
             </Text>
           </View>
         )}

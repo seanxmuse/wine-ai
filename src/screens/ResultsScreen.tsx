@@ -157,20 +157,12 @@ export function ResultsScreen() {
 
             {/* Critic Scores */}
             <View style={styles.scoresSection}>
-                <Text style={styles.sectionTitle}>Critic Scores</Text>
+                <Text style={styles.sectionTitle}>Critic Score</Text>
                 {singleWine.criticScore ? (
-                    <>
-                        {singleWine.critic && (
-                             <View style={styles.scoreItem}>
-                                <Text style={styles.scoreCritic}>{singleWine.critic}</Text>
-                                <Text style={styles.scoreValue}>{singleWine.criticScore}</Text>
-                            </View>
-                        )}
-                        <View style={styles.scoreItem}>
-                            <Text style={styles.scoreCritic}>Average</Text>
-                            <Text style={styles.scoreValue}>{singleWine.criticScore}</Text>
-                        </View>
-                    </>
+                    <View style={styles.scoreItem}>
+                        <Text style={styles.scoreCritic}>Avg. Critic Score</Text>
+                        <Text style={styles.scoreValue}>{singleWine.criticScore}</Text>
+                    </View>
                 ) : (
                     <Text style={styles.noDataText}>No critic scores available.</Text>
                 )}
@@ -254,9 +246,9 @@ export function ResultsScreen() {
                </Text>
                <Text style={styles.emptyStateText}>
                  {selectedCategory === 'highestRated'
-                   ? 'None of the wines on this list have critic ratings available from Wine Labs or web search. Try the "Most Inexpensive" view to see all wines by price.'
+                   ? 'None of the wines on this list have critic scores available. Try the "Most Inexpensive" view to see all wines by price.'
                    : selectedCategory === 'bestValue'
-                   ? 'Best Value requires both critic ratings and market prices. Some wines on this list are missing this data. Try "Highest Rated" or "Most Inexpensive" instead.'
+                   ? 'Best Value requires both critic scores and market prices. Some wines on this list are missing this data. Try "Highest Rated" or "Most Inexpensive" instead.'
                    : 'No wines could be identified from this image. Please try scanning again with better lighting.'}
                </Text>
              </View>
