@@ -640,32 +640,14 @@ export function ChatScreen() {
         style={styles.messagesContainer}
         contentContainerStyle={styles.messagesContent}
       >
-        {/* Show conversation wine list image preview if available */}
-        {conversation?.imageUrl && (
-          <View style={styles.conversationImageContainer}>
-            <View style={styles.conversationImageHeader}>
-              <Ionicons name="image-outline" size={16} color={theme.colors.text.secondary} />
-              <Text style={styles.conversationImageLabel}>Wine List</Text>
-            </View>
-            <Image
-              source={{ uri: conversation.imageUrl }}
-              style={styles.conversationImage}
-              resizeMode="contain"
-            />
-          </View>
-        )}
-
-        {/* Only show uploaded image container when:
-            1. We have an uploaded image AND
-            2. There are no messages yet (image hasn't been analyzed) AND
-            3. We're actively analyzing (user just picked an image) */}
+        {/* Show uploaded image only when actively analyzing (before results come back) */}
         {uploadedImage && messages.length === 0 && isAnalyzing && (
            <View style={styles.uploadedImageContainer}>
              <Image source={{ uri: uploadedImage }} style={styles.uploadedImage} resizeMode="contain" />
            </View>
         )}
 
-        {messages.length === 0 && !uploadedImage && !conversation?.imageUrl && (
+        {messages.length === 0 && !uploadedImage && (
           <View style={styles.emptyState}>
             <Ionicons name="chatbubbles-outline" size={48} color={theme.colors.text.tertiary} />
             <Text style={styles.emptyText}>
@@ -849,34 +831,6 @@ const styles = StyleSheet.create({
     height: rs(8),
     borderRadius: rs(4),
     backgroundColor: theme.colors.text.tertiary,
-  },
-  conversationImageContainer: {
-    marginBottom: rs(24),
-    borderRadius: rs(12),
-    overflow: 'hidden',
-    backgroundColor: '#faf8f4',
-    borderWidth: 1,
-    borderColor: '#e8e3d8',
-    padding: rs(16),
-  },
-  conversationImageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: rs(12),
-    gap: rs(6),
-  },
-  conversationImageLabel: {
-    fontSize: rf(12),
-    color: theme.colors.text.secondary,
-    fontFamily: Platform.OS === 'ios' ? 'CrimsonPro_500Medium' : 'serif',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  conversationImage: {
-    width: '100%',
-    height: rs(250),
-    borderRadius: rs(8),
-    backgroundColor: '#fff',
   },
   uploadedImageContainer: {
     marginBottom: rs(16),

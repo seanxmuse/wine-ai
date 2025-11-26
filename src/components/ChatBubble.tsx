@@ -17,8 +17,10 @@ export function ChatBubble({ message, onWinePress }: ChatBubbleProps) {
   const hasContent = message.content && message.content.trim().length > 0;
   const hasImage = !!message.imageUrl;
   
-  // Only show image in bubble for user messages (assistant analysis images shown at conversation level)
-  const shouldShowImage = hasImage && isUser;
+  // Show image in bubble for:
+  // - User messages (when they upload)
+  // - Assistant messages that have wine results (analysis results)
+  const shouldShowImage = hasImage && (isUser || hasWines);
 
   // Don't render empty assistant messages (no content, no wines, no image)
   if (!isUser && !hasContent && !hasWines && !hasImage) {
@@ -42,15 +44,13 @@ export function ChatBubble({ message, onWinePress }: ChatBubbleProps) {
         styles.bubble,
         isUser ? styles.userBubble : styles.assistantBubble
       ]}>
-        {/* Image Attachment - only show for user messages */}
+        {/* Image Attachment - show for user messages and assistant wine analysis */}
         {shouldShowImage && (
-          <View style={styles.imageContainer}>
-            <Image 
-              source={{ uri: message.imageUrl }} 
-              style={styles.messageImage} 
-              resizeMode="contain" 
-            />
-          </View>
+          <Image 
+            source={{ uri: message.imageUrl }} 
+            style={styles.messageImage} 
+            resizeMode="cover" 
+          />
         )}
 
         {/* Text Content */}
@@ -156,16 +156,11 @@ const styles = StyleSheet.create({
     lineHeight: rf(24),
     fontFamily: Platform.OS === 'ios' ? 'CrimsonPro_400Regular' : 'serif',
   },
-  imageContainer: {
-    marginBottom: rs(12),
-    borderRadius: rs(12),
-    overflow: 'hidden',
-    backgroundColor: '#fff',
-  },
   messageImage: {
     width: '100%',
-    height: rs(200),
-    borderRadius: rs(12),
+    height: rs(150),
+    borderRadius: rs(8),
+    marginBottom: rs(12),
   },
   timestamp: {
     fontSize: rf(11),
