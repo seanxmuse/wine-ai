@@ -2,7 +2,22 @@
 
 ## [Unreleased]
 
+### Added
+- **Chat Image Preview** 🖼️
+  - Added wine list image preview at the top of chat conversations
+  - Shows the original wine list image that was scanned/uploaded
+  - Displays a "Wine List" header with icon above the image
+  - Image is styled with rounded corners and contained within a nice card
+  - Provides visual context for the conversation
+
 ### Fixed
+- **Chat Persistence & Wine Data** 🍷
+  - Fixed chat button from Results screen not navigating to chat
+  - Wine data now persists in database via JSONB column on `chat_messages`
+  - Removed duplicate `handleChatPress` functions causing navigation issues
+  - Added loading indicators when creating chat conversations
+  - Wine cards now display properly in chat with all data
+
 - **Blank Square in Chat Screen from Results** 🔧
   - Fixed blank image container showing incorrectly when navigating from Results to Chat
   - Root cause: `uploadedImageContainer` was showing even when messages already existed
@@ -163,7 +178,10 @@
 - Updated Wine data types to track data source and confidence scores
 
 ### Deployed
-- ✅ **Latest**: https://wine-scanner-c7o05wq8l-seanxmuses-projects.vercel.app (Nov 18, 2025)
+- ✅ **Latest**: https://wine-scanner-fphclhvby-seanxmuses-projects.vercel.app (Nov 26, 2025)
+  - **New**: Image preview in chat - shows the wine list image at the top of conversations
+  - **Fixed**: Chat persistence - wine data now stored in database, navigation works properly
+- Previous: https://wine-scanner-c7o05wq8l-seanxmuses-projects.vercel.app (Nov 18, 2025)
   - **New**: Web search fallback with Gemini for unmatched wines
   - Includes favicon/logo implementation
   - Fixed login screen text overlap issues

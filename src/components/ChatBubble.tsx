@@ -8,13 +8,12 @@ import type { Wine, ChatMessage } from '../types';
 
 interface ChatBubbleProps {
   message: ChatMessage;
-  wines?: Wine[];
   onWinePress?: (wine: Wine) => void;
 }
 
-export function ChatBubble({ message, wines, onWinePress }: ChatBubbleProps) {
+export function ChatBubble({ message, onWinePress }: ChatBubbleProps) {
   const isUser = message.role === 'user';
-  const hasWines = wines && wines.length > 0;
+  const hasWines = message.wines && message.wines.length > 0;
   const hasContent = message.content && message.content.trim().length > 0;
   const hasImage = !!message.imageUrl;
 
@@ -57,11 +56,11 @@ export function ChatBubble({ message, wines, onWinePress }: ChatBubbleProps) {
         ) : (
           <View>
             {/* Wine Cards embedded in Assistant Message */}
-            {hasWines && wines.map((wine, index) => (
-              <ChatWineCard 
-                key={`wine-${index}`} 
-                wine={wine} 
-                onPress={() => onWinePress && onWinePress(wine)} 
+            {hasWines && message.wines!.map((wine, index) => (
+              <ChatWineCard
+                key={`wine-${index}`}
+                wine={wine}
+                onPress={() => onWinePress && onWinePress(wine)}
               />
             ))}
             

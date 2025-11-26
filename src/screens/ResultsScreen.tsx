@@ -8,6 +8,7 @@ import {
   Platform,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,8 @@ import { theme } from '../theme';
 import type { Wine, RankingCategory } from '../types';
 import { rankWines, formatPrice, formatMarkup, getMarkupColor } from '../utils/wineRanking';
 import { WineCard } from '../components/WineCard';
+import { createGeneralChatConversation, addAssistantMessage } from '../services/chat';
+import { formatWinesAsMarkdown } from '../utils/wineFormatting';
 
 export function ResultsScreen() {
   const route = useRoute();
@@ -34,17 +37,61 @@ export function ResultsScreen() {
 
   // List View State
   const [selectedCategory, setSelectedCategory] = useState<RankingCategory>('highestRated');
-  
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
+
+  // Get active wines (all wines or single wine)
+  const activeWines = wines || (singleWine ? [singleWine] : []);
+
+  // Shared chat handler for both views
+  const handleChatPress = async () => {
+    if (isCreatingChat) return; // Prevent double-clicks
+
+    try {
+      setIsCreatingChat(true);
+      console.log('[ResultsScreen] Chat button pressed', { conversationId, hasWines: activeWines.length });
+
+      if (conversationId) {
+        // Resume existing conversation
+        console.log('[ResultsScreen] Resuming conversation:', conversationId);
+        (navigation as any).navigate('Chat', {
+          conversationId,
+          imageUrl,
+          scanId,
+        });
+      } else {
+        // Create new conversation with wine data
+        console.log('[ResultsScreen] Creating new conversation with', activeWines.length, 'wines');
+        const newConversation = await createGeneralChatConversation(imageUrl, scanId);
+        console.log('[ResultsScreen] Conversation created:', newConversation.id);
+
+        // Add assistant message with wine analysis
+        const markdownContent = formatWinesAsMarkdown(activeWines);
+        const assistantContent = `${markdownContent}\n\nWould you like me to help you find the best value or highest rated wines?`;
+
+        console.log('[ResultsScreen] Adding assistant message with wines');
+        await addAssistantMessage(newConversation.id, assistantContent, {
+          wines: activeWines,
+          imageUrl
+        });
+
+        // Navigate to chat
+        console.log('[ResultsScreen] Navigating to chat');
+        (navigation as any).navigate('Chat', {
+          conversationId: newConversation.id,
+          imageUrl,
+          scanId,
+        });
+      }
+    } catch (error) {
+      console.error('[ResultsScreen] Error creating chat:', error);
+      Alert.alert('Error', 'Failed to create chat conversation. Please try again.');
+    } finally {
+      setIsCreatingChat(false);
+    }
+  };
+
   // Render Detail View
   if (isDetailView && singleWine) {
-    const handleChatPress = () => {
-        (navigation as any).navigate('Chat', {
-            wine: singleWine,
-            imageUrl,
-            scanId,
-            initialMessage: `Tell me more about ${singleWine.displayName}`,
-        });
-    };
 
     // Determine rank if possible (if coming from list context, but here likely standalone)
     // For standalone, we might not have a rank.
@@ -131,9 +178,15 @@ export function ResultsScreen() {
 
             {/* Action Buttons */}
             <View style={styles.actionButtons}>
-                <TouchableOpacity style={styles.actionButtonSecondary} onPress={handleChatPress}>
-                    <Text style={{ fontSize: 20 }}>💬</Text>
-                    <Text style={styles.actionButtonTextSecondary}>Chat</Text>
+                <TouchableOpacity style={styles.actionButtonSecondary} onPress={handleChatPress} disabled={isCreatingChat}>
+                    {isCreatingChat ? (
+                      <ActivityIndicator size="small" color="#8b3952" />
+                    ) : (
+                      <>
+                        <Text style={{ fontSize: 20 }}>💬</Text>
+                        <Text style={styles.actionButtonTextSecondary}>Chat</Text>
+                      </>
+                    )}
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.actionButtonPrimary} onPress={() => Alert.alert('Saved', 'Wine saved to favorites!')}>
                     <Text style={{ fontSize: 20 }}>❤️</Text>
@@ -146,40 +199,14 @@ export function ResultsScreen() {
   }
 
   // Fallback to List View logic if not single wine
-  const activeWines = wines || [];
   const rankings = rankWines(activeWines);
   const displayedWines = rankings[selectedCategory];
 
-  // ... (Keep existing list logic roughly the same but simplified/polished if needed, 
-  // but for now we focus on Detail View as requested. I'll preserve the list view structure slightly polished)
-  
   const categories: { key: RankingCategory; label: string }[] = [
     { key: 'highestRated', label: 'Highest Rated' },
     { key: 'bestValue', label: 'Best Value' },
     { key: 'mostInexpensive', label: 'Most Inexpensive' },
   ];
-
-  const handleChatPress = () => {
-    if (conversationId) {
-      // Build winesData object if we have both assistantMessageId and wines
-      const winesData = assistantMessageId && activeWines.length > 0
-        ? { [assistantMessageId]: activeWines }
-        : undefined;
-
-      (navigation as any).navigate('Chat', {
-        conversationId,
-        imageUrl,
-        scanId,
-        winesData,
-      });
-    } else {
-      // Fallback if no conversation was created
-      (navigation as any).navigate('Chat', {
-        imageUrl,
-        scanId,
-      });
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -188,8 +215,12 @@ export function ResultsScreen() {
           <Ionicons name="arrow-back" size={24} color="#1c1915" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Analysis Results</Text>
-        <TouchableOpacity onPress={handleChatPress} style={styles.chatButton}>
-          <Ionicons name="chatbubble-outline" size={24} color="#1c1915" />
+        <TouchableOpacity onPress={handleChatPress} style={styles.chatButton} disabled={isCreatingChat}>
+          {isCreatingChat ? (
+            <ActivityIndicator size="small" color="#1c1915" />
+          ) : (
+            <Ionicons name="chatbubble-outline" size={24} color="#1c1915" />
+          )}
         </TouchableOpacity>
       </View>
 

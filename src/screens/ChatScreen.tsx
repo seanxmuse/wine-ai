@@ -41,13 +41,12 @@ export function ChatScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const scrollViewRef = useRef<ScrollView>(null);
-  const { wine, imageUrl, scanId, conversationId, initialMessage, winesData: initialWinesData } = route.params as {
+  const { wine, imageUrl, scanId, conversationId, initialMessage } = route.params as {
     wine?: Wine;
     imageUrl?: string;
     scanId?: string;
     conversationId?: string;
     initialMessage?: string;
-    winesData?: Record<string, Wine[]>;
   };
   const { setActiveConversationId } = useActiveConversation();
 
@@ -74,22 +73,6 @@ export function ChatScreen() {
       setInputText(initialMessage);
     }
   }, [initialMessage]);
-
-  useEffect(() => {
-    // Store initial wines data if provided via navigation params
-    // This MUST happen BEFORE messages are rendered
-    if (initialWinesData) {
-      console.log('[ChatScreen] Storing initial wines data:', Object.keys(initialWinesData));
-      setWinesData(prev => {
-        const newMap = new Map(prev);
-        Object.entries(initialWinesData).forEach(([messageId, wines]) => {
-          console.log(`[ChatScreen] Adding wines for message ${messageId}:`, wines.length);
-          newMap.set(messageId, wines);
-        });
-        return newMap;
-      });
-    }
-  }, [initialWinesData]);
 
   useEffect(() => {
     // Set active conversation when conversation loads
@@ -119,22 +102,8 @@ export function ChatScreen() {
 
       console.log('[ChatScreen] initializeConversation called with:', {
         conversationId,
-        imageUrl,
-        hasWinesData: !!initialWinesData
+        imageUrl
       });
-
-      // CRITICAL: Store wines data FIRST before loading messages
-      if (initialWinesData) {
-        console.log('[ChatScreen] Pre-populating winesData before loading messages');
-        setWinesData(prev => {
-          const newMap = new Map(prev);
-          Object.entries(initialWinesData).forEach(([messageId, wines]) => {
-            console.log(`[ChatScreen] Pre-loading wines for message ${messageId}:`, wines.length);
-            newMap.set(messageId, wines);
-          });
-          return newMap;
-        });
-      }
 
       if (conversationId) {
         // Load existing conversation
@@ -149,16 +118,26 @@ export function ChatScreen() {
         }
         setConversation(conv);
         const existingMessages = await getChatMessages(conversationId);
+
+        // Hydrate winesData Map from database
+        const newWinesData = new Map<string, Wine[]>();
+        existingMessages.forEach(msg => {
+          if (msg.wines && msg.wines.length > 0) {
+            newWinesData.set(msg.id, msg.wines);
+            console.log(`[ChatScreen] Loaded ${msg.wines.length} wines for message ${msg.id}`);
+          }
+        });
+        setWinesData(newWinesData);
+
         console.log('[ChatScreen] Loaded messages:', existingMessages.length,
           existingMessages.map(m => ({
             id: m.id,
             role: m.role,
             hasContent: !!m.content,
             hasImage: !!m.imageUrl,
-            hasWines: initialWinesData ? !!initialWinesData[m.id] : false
+            hasWines: !!m.wines
           })));
 
-        // Set messages AFTER winesData is already populated
         setMessages(existingMessages);
 
         if (conv.imageUrl) {
@@ -169,7 +148,7 @@ export function ChatScreen() {
         if (wine) {
           conv = await createChatConversation(wine, imageUrl, scanId);
         } else {
-          conv = await createGeneralChatConversation();
+          conv = await createGeneralChatConversation(imageUrl, scanId);
         }
         setConversation(conv);
         setMessages([]);
@@ -661,6 +640,21 @@ export function ChatScreen() {
         style={styles.messagesContainer}
         contentContainerStyle={styles.messagesContent}
       >
+        {/* Show conversation wine list image preview if available */}
+        {conversation?.imageUrl && (
+          <View style={styles.conversationImageContainer}>
+            <View style={styles.conversationImageHeader}>
+              <Ionicons name="image-outline" size={16} color={theme.colors.text.secondary} />
+              <Text style={styles.conversationImageLabel}>Wine List</Text>
+            </View>
+            <Image
+              source={{ uri: conversation.imageUrl }}
+              style={styles.conversationImage}
+              resizeMode="contain"
+            />
+          </View>
+        )}
+
         {/* Only show uploaded image container when:
             1. We have an uploaded image AND
             2. There are no messages yet (image hasn't been analyzed) AND
@@ -671,31 +665,27 @@ export function ChatScreen() {
            </View>
         )}
 
-        {messages.length === 0 && !uploadedImage && (
+        {messages.length === 0 && !uploadedImage && !conversation?.imageUrl && (
           <View style={styles.emptyState}>
             <Ionicons name="chatbubbles-outline" size={48} color={theme.colors.text.tertiary} />
             <Text style={styles.emptyText}>
               {wine ? 'Start a conversation about this wine' : 'Start a conversation'}
             </Text>
             <Text style={styles.emptySubtext}>
-              {wine 
+              {wine
                 ? 'Ask about tasting notes, food pairings, or recommendations'
                 : 'Upload a wine list image to analyze, or ask me anything about wine'}
             </Text>
           </View>
         )}
 
-        {messages.map((message) => {
-          const messageWines = winesData.get(message.id);
-          return (
-            <ChatBubble 
-              key={message.id} 
-              message={message} 
-              wines={messageWines}
-              onWinePress={handleWinePress}
-            />
-          );
-        })}
+        {messages.map((message) => (
+          <ChatBubble
+            key={message.id}
+            message={message}
+            onWinePress={handleWinePress}
+          />
+        ))}
 
         {(isLoading || isAnalyzing) && (
           <View style={styles.loadingContainer}>
@@ -859,6 +849,34 @@ const styles = StyleSheet.create({
     height: rs(8),
     borderRadius: rs(4),
     backgroundColor: theme.colors.text.tertiary,
+  },
+  conversationImageContainer: {
+    marginBottom: rs(24),
+    borderRadius: rs(12),
+    overflow: 'hidden',
+    backgroundColor: '#faf8f4',
+    borderWidth: 1,
+    borderColor: '#e8e3d8',
+    padding: rs(16),
+  },
+  conversationImageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: rs(12),
+    gap: rs(6),
+  },
+  conversationImageLabel: {
+    fontSize: rf(12),
+    color: theme.colors.text.secondary,
+    fontFamily: Platform.OS === 'ios' ? 'CrimsonPro_500Medium' : 'serif',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  conversationImage: {
+    width: '100%',
+    height: rs(250),
+    borderRadius: rs(8),
+    backgroundColor: '#fff',
   },
   uploadedImageContainer: {
     marginBottom: rs(16),

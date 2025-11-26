@@ -113,5 +113,6 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   imageUrl?: string;
+  wines?: Wine[];
   createdAt: string;
 }

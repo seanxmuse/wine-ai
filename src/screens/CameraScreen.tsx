@@ -23,7 +23,7 @@ import { calculateMarkup } from '../utils/wineRanking';
 import { supabase } from '../services/supabase';
 import { logger } from '../utils/logger';
 import { useActiveConversation } from '../contexts/ActiveConversationContext';
-import { createGeneralChatConversation, addAssistantMessage, generateChatTitle } from '../services/chat';
+import { createGeneralChatConversation, addAssistantMessage } from '../services/chat';
 import { formatWinesAsMarkdown } from '../utils/wineFormatting';
 import { SimpleCameraWeb } from './SimpleCameraWeb';
 
@@ -656,22 +656,14 @@ export function CameraScreen() {
           let conversationId: string = routeConversationId || activeConversationId || '';
           
           if (!conversationId) {
-            const newConversation = await createGeneralChatConversation(imageUrl);
+            const newConversation = await createGeneralChatConversation(imageUrl, savedScanId);
             conversationId = newConversation.id;
           }
-          
+
           const markdownContent = formatWinesAsMarkdown(wines);
           const assistantContent = `${markdownContent}\n\nWould you like me to help you find the best value or highest rated wines?`;
-          
+
           const assistantMessage = await addAssistantMessage(conversationId, assistantContent, { wines, imageUrl });
-          
-          if (!routeConversationId && !activeConversationId) {
-            try {
-              await generateChatTitle(conversationId, undefined, wines);
-            } catch (titleError) {
-              console.error('Error generating chat title:', titleError);
-            }
-          }
           
           (navigation as any).navigate('Chat', { 
             conversationId,
@@ -702,19 +694,13 @@ export function CameraScreen() {
               winesData: { [assistantMessage.id]: wines },
             });
           } else {
-            const newConversation = await createGeneralChatConversation(imageUrl);
+            const newConversation = await createGeneralChatConversation(imageUrl, savedScanId);
             conversationId = newConversation.id;
-            
+
             const markdownContent = formatWinesAsMarkdown(wines);
             const assistantContent = `${markdownContent}\n\nWould you like me to help you find the best value or highest rated wines?`;
-            
+
             const assistantMessage = await addAssistantMessage(conversationId, assistantContent, { wines, imageUrl });
-            
-            try {
-              await generateChatTitle(conversationId, undefined, wines);
-            } catch (titleError) {
-              console.error('Error generating chat title:', titleError);
-            }
             
             (navigation as any).navigate('Chat', { 
               conversationId,

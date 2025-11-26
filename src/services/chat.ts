@@ -65,14 +65,15 @@ function getFirstMessagePreview(message: string): string {
  * Create a new general chat conversation (not wine-specific)
  */
 export async function createGeneralChatConversation(
-  imageUrl?: string
+  imageUrl?: string,
+  scanId?: string
 ): Promise<ChatConversation> {
   const { data: session } = await supabase.auth.getSession();
   if (!session?.session?.user) {
     throw new Error('User not authenticated');
   }
 
-  // Use datetime as initial title (will be replaced by AI or first message later)
+  // Use datetime as initial title
   const initialTitle = formatChatDateTime(new Date());
 
   const { data, error } = await supabase
@@ -80,6 +81,7 @@ export async function createGeneralChatConversation(
     .insert({
       user_id: session.session.user.id,
       image_url: imageUrl,
+      scan_id: scanId,
       title: initialTitle,
     })
     .select()
@@ -174,7 +176,7 @@ export async function getChatConversation(conversationId: string): Promise<ChatC
 /**
  * Get all conversations for the current user
  */
-export async function getChatConversations(): Promise<ChatConversation[]> {
+export async function getChatConversations(limit: number = 50): Promise<ChatConversation[]> {
   const { data: session } = await supabase.auth.getSession();
   if (!session?.session?.user) {
     throw new Error('User not authenticated');
@@ -184,7 +186,8 @@ export async function getChatConversations(): Promise<ChatConversation[]> {
     .from('chat_conversations')
     .select('*')
     .eq('user_id', session.session.user.id)
-    .order('updated_at', { ascending: false });
+    .order('updated_at', { ascending: false })
+    .limit(limit);
 
   if (error) {
     throw error;
@@ -222,6 +225,7 @@ export async function getChatMessages(conversationId: string): Promise<ChatMessa
     role: msg.role,
     content: msg.content,
     imageUrl: msg.image_url,
+    wines: msg.wines ? (typeof msg.wines === 'string' ? JSON.parse(msg.wines) : msg.wines) : undefined,
     createdAt: msg.created_at,
   }));
 }
@@ -669,125 +673,6 @@ export async function deleteChatConversation(conversationId: string): Promise<vo
 }
 
 /**
- * Generate a chat title using AI based on first message or wine list
- * Falls back to first message preview or datetime if AI fails
- */
-export async function generateChatTitle(
-  conversationId: string,
-  firstMessage?: string,
-  wines?: Wine[]
-): Promise<string> {
-  // Fallback hierarchy helper
-  const getFallbackTitle = (): string => {
-    if (firstMessage) {
-      return getFirstMessagePreview(firstMessage);
-    }
-    return formatChatDateTime(new Date());
-  };
-
-  if (!GEMINI_API_KEY) {
-    console.warn('[Chat] No Gemini API key, using fallback title');
-    const fallbackTitle = getFallbackTitle();
-    await supabase
-      .from('chat_conversations')
-      .update({ title: fallbackTitle })
-      .eq('id', conversationId);
-    return fallbackTitle;
-  }
-
-  let prompt = 'Generate a short, descriptive title (max 50 characters) for this wine chat conversation. ';
-
-  if (wines && wines.length > 0) {
-    const wineNames = wines.slice(0, 3).map(w => w.displayName).join(', ');
-    prompt += `The conversation is about analyzing a wine list with: ${wineNames}${wines.length > 3 ? ' and more' : ''}.`;
-  } else if (firstMessage) {
-    prompt += `The first user message is: "${firstMessage.substring(0, 200)}"`;
-  } else {
-    // No content to generate title from, use datetime
-    const fallbackTitle = formatChatDateTime(new Date());
-    await supabase
-      .from('chat_conversations')
-      .update({ title: fallbackTitle })
-      .eq('id', conversationId);
-    return fallbackTitle;
-  }
-
-  prompt += '\n\nReturn ONLY the title text, no quotes, no explanation. Keep it under 50 characters.';
-
-  try {
-    // Add timeout to AI request (5 seconds)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: prompt }],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 50,
-          },
-        }),
-        signal: controller.signal,
-      }
-    );
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      console.warn('[Chat] AI title generation failed, using fallback');
-      const fallbackTitle = getFallbackTitle();
-      await supabase
-        .from('chat_conversations')
-        .update({ title: fallbackTitle })
-        .eq('id', conversationId);
-      return fallbackTitle;
-    }
-
-    const data = await response.json();
-    const title = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-
-    if (!title || title.length === 0) {
-      console.warn('[Chat] AI returned empty title, using fallback');
-      const fallbackTitle = getFallbackTitle();
-      await supabase
-        .from('chat_conversations')
-        .update({ title: fallbackTitle })
-        .eq('id', conversationId);
-      return fallbackTitle;
-    }
-
-    // Ensure title is max 50 chars
-    const finalTitle = title.length > 50 ? title.substring(0, 47) + '...' : title;
-
-    // Update conversation title
-    await supabase
-      .from('chat_conversations')
-      .update({ title: finalTitle })
-      .eq('id', conversationId);
-
-    return finalTitle;
-  } catch (error) {
-    console.error('[Chat] Error generating chat title:', error);
-    const fallbackTitle = getFallbackTitle();
-    await supabase
-      .from('chat_conversations')
-      .update({ title: fallbackTitle })
-      .eq('id', conversationId);
-    return fallbackTitle;
-  }
-}
-
-/**
  * Add an assistant message with optional metadata (for wine list analysis)
  */
 export async function addAssistantMessage(
@@ -800,8 +685,7 @@ export async function addAssistantMessage(
     throw new Error('User not authenticated');
   }
 
-  // Store metadata as JSON in a custom field if needed
-  // For now, we'll store wines data separately and reference via imageUrl
+  // Store wines as JSONB in database for persistence
   const { data: assistantMessage, error } = await supabase
     .from('chat_messages')
     .insert({
@@ -809,6 +693,7 @@ export async function addAssistantMessage(
       role: 'assistant',
       content: content,
       image_url: metadata?.imageUrl,
+      wines: metadata?.wines ? JSON.stringify(metadata.wines) : null,
     })
     .select()
     .single();
@@ -823,6 +708,7 @@ export async function addAssistantMessage(
     role: assistantMessage.role,
     content: assistantMessage.content,
     imageUrl: assistantMessage.image_url,
+    wines: assistantMessage.wines ? (typeof assistantMessage.wines === 'string' ? JSON.parse(assistantMessage.wines) : assistantMessage.wines) : undefined,
     createdAt: assistantMessage.created_at,
   };
 }
