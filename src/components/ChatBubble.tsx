@@ -16,6 +16,9 @@ export function ChatBubble({ message, onWinePress }: ChatBubbleProps) {
   const hasWines = message.wines && message.wines.length > 0;
   const hasContent = message.content && message.content.trim().length > 0;
   const hasImage = !!message.imageUrl;
+  
+  // Only show image in bubble for user messages (assistant analysis images shown at conversation level)
+  const shouldShowImage = hasImage && isUser;
 
   // Don't render empty assistant messages (no content, no wines, no image)
   if (!isUser && !hasContent && !hasWines && !hasImage) {
@@ -39,8 +42,8 @@ export function ChatBubble({ message, onWinePress }: ChatBubbleProps) {
         styles.bubble,
         isUser ? styles.userBubble : styles.assistantBubble
       ]}>
-        {/* Image Attachment */}
-        {message.imageUrl && (
+        {/* Image Attachment - only show for user messages */}
+        {shouldShowImage && (
           <View style={styles.imageContainer}>
             <Image 
               source={{ uri: message.imageUrl }} 
