@@ -5,46 +5,20 @@ import { matchWinesToLwin, getPriceStats, getCriticScores, getWineInfo } from '.
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
 
 /**
- * Format a date into a friendly chat title format
- * - Same day: "Today 2:30 PM"
- * - Yesterday: "Yesterday 2:30 PM"
- * - This week: "Monday 2:30 PM"
- * - Older: "Jan 21 2:30 PM"
+ * Format a date into an absolute chat title format
+ * e.g., "Wed, 11/26, 5:15PM"
  */
 function formatChatDateTime(date: Date): string {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const weekAgo = new Date(today);
-  weekAgo.setDate(weekAgo.getDate() - 7);
-
+  const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
   const time = date.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
-  });
-
-  // Same day
-  if (date >= today) {
-    return `Today ${time}`;
-  }
-
-  // Yesterday
-  if (date >= yesterday) {
-    return `Yesterday ${time}`;
-  }
-
-  // This week
-  if (date >= weekAgo) {
-    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-    return `${dayName} ${time}`;
-  }
-
-  // Older
-  const month = date.toLocaleDateString('en-US', { month: 'short' });
-  const day = date.getDate();
-  return `${month} ${day} ${time}`;
+  }).replace(' ', ''); // Remove space before AM/PM
+  
+  return `${dayName}, ${month}/${day}, ${time}`;
 }
 
 /**
