@@ -176,23 +176,6 @@ export function ResultsScreen() {
                 )}
             </View>
 
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-                <TouchableOpacity style={styles.actionButtonSecondary} onPress={handleChatPress} disabled={isCreatingChat}>
-                    {isCreatingChat ? (
-                      <ActivityIndicator size="small" color="#8b3952" />
-                    ) : (
-                      <>
-                        <Text style={{ fontSize: 20 }}>💬</Text>
-                        <Text style={styles.actionButtonTextSecondary}>Chat</Text>
-                      </>
-                    )}
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButtonPrimary} onPress={() => Alert.alert('Saved', 'Wine saved to favorites!')}>
-                    <Text style={{ fontSize: 20 }}>❤️</Text>
-                    <Text style={styles.actionButtonTextPrimary}>Save</Text>
-                </TouchableOpacity>
-            </View>
         </ScrollView>
       </View>
     );

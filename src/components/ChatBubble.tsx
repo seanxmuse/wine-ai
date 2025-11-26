@@ -49,7 +49,7 @@ export function ChatBubble({ message, onWinePress }: ChatBubbleProps) {
           <Image 
             source={{ uri: message.imageUrl }} 
             style={styles.messageImage} 
-            resizeMode="cover" 
+            resizeMode="contain" 
           />
         )}
 
@@ -158,9 +158,11 @@ const styles = StyleSheet.create({
   },
   messageImage: {
     width: '100%',
-    height: rs(150),
+    aspectRatio: 4/3,
+    maxHeight: rs(200),
     borderRadius: rs(8),
     marginBottom: rs(12),
+    backgroundColor: '#f5f5f5',
   },
   timestamp: {
     fontSize: rf(11),
